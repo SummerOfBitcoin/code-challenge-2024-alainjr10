@@ -51,6 +51,9 @@ func CreateAndModCoinbaseTxWithSecondOutput(txs []*wire.MsgTx) *wire.MsgTx {
 	commitmentScript := CreateCoinbaseCommittmentScript(txs)
 	commitmentOutput := wire.NewTxOut(0, commitmentScript)
 	coinbaseTx.AddTxOut(commitmentOutput)
+	witnessItem := fmt.Sprintf("%064x", 0)
+	witnessItemBytes, _ := hex.DecodeString(witnessItem)
+	coinbaseTx.TxIn[0].Witness = append(coinbaseTx.TxIn[0].Witness, witnessItemBytes)
 	return coinbaseTx
 }
 
@@ -92,10 +95,8 @@ func ParseBlock(txs []*wire.MsgTx) *wire.MsgBlock {
 }
 
 func CreateMerkleTree(txs []*wire.MsgTx, isWTxId bool) (*chainhash.Hash, error) {
-	coinbaseTx, _ := CreateCoinbaseTx()
-	commitmentScript := CreateCoinbaseCommittmentScript(txs)
-	commitmentOutput := wire.NewTxOut(0, commitmentScript)
-	coinbaseTx.AddTxOut(commitmentOutput)
+	coinbaseTx := CreateAndModCoinbaseTxWithSecondOutput(txs)
+	coinbaseTx.TxIn[0].Witness = nil
 	coinbaseTxHash := coinbaseTx.TxHash()
 	coinbaseWTxId := fmt.Sprintf("%016x", 0)
 	coinbaseWTxIdHash, _ := chainhash.NewHashFromStr(coinbaseWTxId)
