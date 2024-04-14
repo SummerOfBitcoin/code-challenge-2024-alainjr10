@@ -138,7 +138,7 @@ func CreateWitnessMerkleTree(txs []*wire.MsgTx) (*chainhash.Hash, error) {
 	// commitmentScript := CreateCoinbaseCommittmentScript(txs)
 	// commitmentOutput := wire.NewTxOut(0, commitmentScript)
 	// coinbaseTx.AddTxOut(commitmentOutput)
-	coinbaseWTxId := fmt.Sprintf("%016x", 0)
+	coinbaseWTxId := fmt.Sprintf("%064x", 0)
 	coinbaseWTxIdHash, _ := chainhash.NewHashFromStr(coinbaseWTxId)
 	// validTxs := make([]string, 0)
 	// validTxs = append(validTxs, coinbaseTx.TxHash().String())
