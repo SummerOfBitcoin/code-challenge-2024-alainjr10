@@ -154,17 +154,17 @@ func ValidateTxHashes(transaction types.TransactionData) bool {
 	}
 	stackT, _ := overallStack.Pop()
 	if stackT[0] == 0x01 {
-		fmt.Println("Valid transaction")
+		// fmt.Println("Valid transaction")
 		txIsVerified = true
 	} else {
 		fmt.Println("Invalid transaction")
 		txIsVerified = false
 	}
-	_, transactionBytes := SerializeATx(transaction)
-	hexEncodedTx := hex.EncodeToString(transactionBytes)
+	// _, transactionBytes := SerializeATx(transaction)
+	// hexEncodedTx := hex.EncodeToString(transactionBytes)
 	// fmt.Println("Serialized tx: ", hexEncodedTx)
-	fileName := GetFileName(hexEncodedTx)
-	fmt.Println("Tx Name:", hex.EncodeToString(fileName[:]), "File name: ", transaction.TxFilename, "\nverified:", txIsVerified)
+	// fileName := GetFileName(hexEncodedTx)
+	// fmt.Println("Tx Name:", hex.EncodeToString(fileName[:]), "File name: ", transaction.TxFilename, "\nverified:", txIsVerified)
 	return txIsVerified
 }
 

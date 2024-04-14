@@ -87,10 +87,10 @@ func ConbaseTxToTxStruct(tx *wire.MsgTx) {
 func PrintCoinbaseTx() ([]byte, string) {
 	tx, _ := CreateCoinbaseTx()
 	hexEncoded := hex.EncodeToString(SerializeWireMsgTx(tx))
-	fileName := GetFileName(hexEncoded)
+	// fileName := GetFileName(hexEncoded)
 	// parse the transaction struct to a string
 	// fmt.Println("Coinbase transaction: ", transcation)
-	fmt.Println("Coinbase transaction: ", hexEncoded, "\nFilename: ", hex.EncodeToString(fileName))
+	// fmt.Println("Coinbase transaction: ", hexEncoded, "\nFilename: ", hex.EncodeToString(fileName))
 	return SerializeWireMsgTx(tx), hexEncoded
 }
 

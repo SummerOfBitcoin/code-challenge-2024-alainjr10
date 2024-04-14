@@ -178,7 +178,7 @@ func VerifyBlock(txs []*wire.MsgTx) {
 			break
 		} else {
 			currNonce++
-			fmt.Println("\\/\\/\\/Not mined. Cur Nonce: .", currNonce, "Target: ", blockHeader.Bits, "Hash: ", compactHash, "/\\/\\/\\")
+			// fmt.Println("\\/\\/\\/Not mined. Cur Nonce: .", currNonce, "Target: ", blockHeader.Bits, "Hash: ", compactHash, "/\\/\\/\\")
 		}
 	}
 
