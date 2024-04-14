@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -9,7 +8,8 @@ import (
 
 	"github.com/SummerOfBitcoin/code-challenge-2024-alainjr10/handlers"
 	"github.com/SummerOfBitcoin/code-challenge-2024-alainjr10/types"
-	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/wire"
 )
 
 func main() {
@@ -39,17 +39,55 @@ func main() {
 	}
 
 	// getValidTxOfCertainTypes(transactions, "p2pkh")
+	validTxIds := make([]string, 0)
+	validRawTxs := make([]string, 0)
+	var validTxs []*wire.MsgTx
+	coinbaseTxBytes, coinbaseTxHex := handlers.PrintCoinbaseTx()
+	coinbaseTxId := chainhash.DoubleHashH(coinbaseTxBytes)
+	validTxIds = append(validTxIds, coinbaseTxId.String())
+	validRawTxs = append(validRawTxs, coinbaseTxHex)
 	for _, tx := range transactions {
 		// handlers.ValidateTxHashes(tx)
 		// 5d8839c29051c0a892730be6c4f6be086904b0a6d537097df1fc92bb8d30a5ad
-		// 0a8b21af1cfcc26774df1f513a72cd362a14f5a598ec39d915323078efb5a240
-		if tx.TxFilename == "0a768ce65115e0bf1b4fd4b3b1c5d1a66c56a9cc41d9fc1530a7ef3e4fdeaee7.json" {
-			// handlers.ValidateTxHashes(tx)
-			res := handlers.VerifyTxSig(tx)
-			fmt.Println("Result: ", res)
+		// 0a8b21af1cfcc26774df1f513a72cd362a14f5a598ec39d915323078efb5a240 p2pkh
+		// 0a768ce65115e0bf1b4fd4b3b1c5d1a66c56a9cc41d9fc1530a7ef3e4fdeaee7 p2wpkh
+		// 0a07736090b0677920c14d64e12e81cbb5e9d2fbcfeea536cda7d571b6d4607f p2wpkh
+		// 002f5ff2f870154b109d823bbad6fd349582d5b85ead5ce0f9f7a4a0270ce37a p2wpkh
+		// if tx.TxFilename == "002f5ff2f870154b109d823bbad6fd349582d5b85ead5ce0f9f7a4a0270ce37a.json" {
+		// 	handlers.ValidateTxHashes(tx)
+		// 	res := handlers.VerifyTxSig(tx)
+		// 	fmt.Println("Result: ", res)
+		// }
+		if len(validTxIds) < 5 {
+			if len(tx.Vin) == 1 {
+				if tx.Vin[0].Prevout.ScriptPubKeyType == "p2pkh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wpkh" {
+					res := handlers.FullTxValidation(tx)
+					if res {
+						serializedTx, serializedTxBytes := handlers.SerializeATx(tx)
+						serializedTxHex := hex.EncodeToString(serializedTxBytes)
+						serializedTxId := chainhash.DoubleHashH(serializedTxBytes)
+						validTxIds = append(validTxIds, serializedTxId.String())
+						validRawTxs = append(validRawTxs, serializedTxHex)
+						validTxs = append(validTxs, serializedTx)
+					}
+				} else {
+					continue
+				}
+			} else {
+				continue
+			}
+
+		} else {
+			break
 		}
+
 	}
-	// handlers.PrintCoinbaseTx()
+	// fmt.Println("length of valid TxIds, ", len(validTxIds))
+	// handlers.CreateMerkleTree(validTxIds)
+	// handlers.SerializedBlockTxs(validRawTxs)
+
+	// handlers.CreateBlockHeader()
+	handlers.VerifyBlock(validTxs)
 
 }
 
@@ -65,52 +103,6 @@ func getValidTxOfCertainTypes(transactions []types.TransactionData, txType strin
 				}
 			}
 		}
-
-	}
-}
-
-func hashAndValidate() {
-	// signatureBytes, _ := hex.DecodeString("30450221008f619822a97841ffd26eee942d41c1c4704022af2dd42600f006336ce686353a0220659476204210b21d605baab00bef7005ff30e878e911dc99413edb6c1e022acd01") // Extract from 'scriptsig'
-	// // if err != nil { ... }
-	// signature, _ := btcec.parse.ParseDERSignature(signatureBytes)
-	// if err != nil { ... }
-
-	pubKeyBytes, _ := hex.DecodeString("02e57d639eb8ad9feeda51d951c33feed17c2ad7946c3a7223513fb912a5b2363b") // Extract from 'scriptsig'
-	// if err != nil { ... }
-	// pubKey, _ := btcec.ParsePubKey(pubKeyBytes)
-
-	pubKeyHashBytes, _ := hex.DecodeString("4cf014394e1aa81ca0317ad24c3a886040e80da7") // Extract from 'scriptpubkey'
-
-	val := btcutil.Hash160(pubKeyBytes)
-	fmt.Println("pubkey bytes ", pubKeyBytes, "\nhash is: ", val, "pubKey: ", pubKeyHashBytes)
-
-	if bytes.Equal(val, pubKeyHashBytes) {
-		fmt.Println("Valid signature")
-	} else {
-		fmt.Println("Invalid signature")
-
-	}
-}
-
-func hashAndValidatePSH() {
-	// signatureBytes, _ := hex.DecodeString("30450221008f619822a97841ffd26eee942d41c1c4704022af2dd42600f006336ce686353a0220659476204210b21d605baab00bef7005ff30e878e911dc99413edb6c1e022acd01") // Extract from 'scriptsig'
-	// // if err != nil { ... }
-	// signature, _ := btcec.parse.ParseDERSignature(signatureBytes)
-	// if err != nil { ... }
-
-	redeemScriptBytes, _ := hex.DecodeString("0014a275e7990a2a2d7ffda637613b29e680b2cc7048") // Extract from 'scriptsig'
-	// if err != nil { ... }
-	// pubKey, _ := btcec.ParsePubKey(pubKeyBytes)
-
-	redeemScriptHashBytes, _ := hex.DecodeString("06f19824aff9b90bb52b859f64f27c9837ee3fa9") // Extract from 'scriptpubkey'
-
-	val := btcutil.Hash160(redeemScriptBytes)
-	fmt.Println("pubkey bytes ", redeemScriptBytes, "\nhash is: ", val, "pubKey: ", redeemScriptHashBytes)
-
-	if bytes.Equal(val, redeemScriptHashBytes) {
-		fmt.Println("Valid signature")
-	} else {
-		fmt.Println("Invalid signature")
 
 	}
 }

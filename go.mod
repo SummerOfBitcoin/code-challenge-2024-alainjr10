@@ -3,6 +3,7 @@ module github.com/SummerOfBitcoin/code-challenge-2024-alainjr10
 go 1.21.3
 
 require (
+	github.com/0xb10c/rawtx v1.5.0 // indirect
 	github.com/btcsuite/btcd v0.24.0 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.1.3 // indirect
 	github.com/btcsuite/btcd/btcutil v1.1.5 // indirect

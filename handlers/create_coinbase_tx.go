@@ -5,23 +5,29 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/SummerOfBitcoin/code-challenge-2024-alainjr10/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 )
 
-func CreateCoinbaseTx() *wire.MsgTx {
+func CreateCoinbaseTx() (*wire.MsgTx, types.TransactionData) {
 	// var coinbaseTx types.TransactionData
 	// let's create my public key, private key and address
-
+	var transaction types.TransactionData
 	tx := wire.NewMsgTx(wire.TxVersion)
 	// create the chain hash which is the hash of the genesis block which is actually just a 32 byte array of 0s
-	chainHash := chaincfg.MainNetParams.GenesisHash
+	chainHash := chaincfg.MainNetParams.HDCoinType
+	coinbaseVinTxid, err := chainhash.NewHashFromStr(fmt.Sprint(chainHash))
+	if err != nil {
+		fmt.Println("Error creating coinbase transaction: ", err)
+	}
 	// and then the index, which for this coinbase transaction is just an 8 byte array of 0xffffffff
 	indexVal := ^uint32(0)
-	prevOut := wire.NewOutPoint(chainHash, indexVal)
+	prevOut := wire.NewOutPoint(coinbaseVinTxid, indexVal)
 	sigScript := createCoinbaseScriptSig()
 	txIn := wire.NewTxIn(prevOut, sigScript, nil)
 	txIn.Sequence = wire.MaxTxInSequenceNum
@@ -31,30 +37,73 @@ func CreateCoinbaseTx() *wire.MsgTx {
 	output2ScriptPubKey, _ := txscript.PayToAddrScript(outputAddr)
 	txOut := wire.NewTxOut(624000000, output2ScriptPubKey)
 	tx.AddTxOut(txOut)
-
-	return tx
+	hexEncoded := hex.EncodeToString(SerializeWireMsgTx(tx))
+	fileName := GetFileName(hexEncoded)
+	fileNameHex := hex.EncodeToString(fileName)
+	scriptPubKeyAsm, _ := txscript.DisasmString(output2ScriptPubKey)
+	transaction = types.TransactionData{
+		TxFilename: fileNameHex + ".json",
+		Version:    int(tx.Version),
+		Locktime:   int(tx.LockTime),
+		Vin: []types.TransactionVin{
+			{
+				TxID:         coinbaseVinTxid.String(),
+				Vout:         int(indexVal),
+				ScriptSig:    "",
+				ScriptSigAsm: "",
+				Sequence:     int(txIn.Sequence),
+				IsCoinbase:   true,
+			},
+		},
+		Vout: []types.TransactionVout{
+			{
+				ScriptPubKey:        hex.EncodeToString(output2ScriptPubKey),
+				ScriptPubKeyAsm:     scriptPubKeyAsm,
+				ScriptPubKeyType:    "p2pkh",
+				ScriptPubKeyAddress: Address,
+				Value:               int(txOut.Value),
+			},
+		},
+	}
+	return tx, transaction
 }
 
-func serializeTransaction(tx *wire.MsgTx) []byte {
+func SerializeWireMsgTx(tx *wire.MsgTx) []byte {
 	var txBuf bytes.Buffer
 	tx.Serialize(&txBuf)
 	return txBuf.Bytes()
 }
 
-func PrintCoinbaseTx() {
-	tx := CreateCoinbaseTx()
-	hexEncoded := hex.EncodeToString(serializeTransaction(tx))
-	fileName := GetFileName(hexEncoded)
-	fmt.Println("Coinbase transaction: ", hexEncoded, "\nFilename: ", hex.EncodeToString(fileName))
+func SerializeWireBlockHeader(tx *wire.BlockHeader) []byte {
+	var txBuf bytes.Buffer
+	tx.Serialize(&txBuf)
+	return txBuf.Bytes()
+}
 
+func ConbaseTxToTxStruct(tx *wire.MsgTx) {
+	fmt.Println("Coinbase transaction: ", hex.EncodeToString(SerializeWireMsgTx(tx)))
+}
+
+func PrintCoinbaseTx() ([]byte, string) {
+	tx, _ := CreateCoinbaseTx()
+	hexEncoded := hex.EncodeToString(SerializeWireMsgTx(tx))
+	fileName := GetFileName(hexEncoded)
+	// parse the transaction struct to a string
+	// fmt.Println("Coinbase transaction: ", transcation)
+	fmt.Println("Coinbase transaction: ", hexEncoded, "\nFilename: ", hex.EncodeToString(fileName))
+	return SerializeWireMsgTx(tx), hexEncoded
 }
 
 func createCoinbaseScriptSig() []byte {
 	// Convert block height to a byte slice
-	heightBytes := []byte(fmt.Sprintf("%08d", 820105))
+	height := fmt.Sprintf("%06x", 838770)
+	heightBytes, _ := hex.DecodeString(height)
+	heightBytes = ReverseSlice(heightBytes)
 	scriptBuilder := txscript.NewScriptBuilder()
-	scriptBuilder.AddOp(txscript.OP_PUSHDATA4).AddData(heightBytes)
+	scriptBuilder.AddOp(txscript.OP_DATA_4).AddData(heightBytes)
 	script, _ := scriptBuilder.Script()
+	// decryp, _ := txscript.DisasmString(script)
+	// fmt.Println("Script: ", hex.EncodeToString(script), "\nDecrypted: ", decryp)
 	return script
 }
 

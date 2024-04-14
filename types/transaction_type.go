@@ -46,6 +46,7 @@ type BlockHeader struct {
 }
 
 type Block struct {
-	Header       BlockHeader       `json:"header"`
-	Transactions []TransactionData `json:"transactions"`
+	Header           BlockHeader       `json:"header"`
+	TransactionCount int               `json:"transaction_count"`
+	Transactions     []TransactionData `json:"transactions"`
 }
