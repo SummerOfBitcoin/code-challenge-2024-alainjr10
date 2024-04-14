@@ -146,15 +146,16 @@ func VerifyBlock(txs []*wire.MsgTx) {
 		}
 
 		headerHash := block.BlockHash()
+		headerHashBytes, _ := hex.DecodeString(headerHash.String())
 		// for numerical calculations, we gotta convert our little endian hash to big endian, before conerting to big int
-		headerHashReversed := ReverseBytesFromHexStr(headerHash.String())
-		headerHashRevBytes, _ := hex.DecodeString(headerHashReversed)
+		// headerHashReversed := ReverseBytesFromHexStr(headerHash.String())
+		// headerHashRevBytes, _ := hex.DecodeString(headerHashReversed)
 
 		// blockHeaderSerialized := SerializeWireBlockHeader(blockHeader)
 		// fmt.Println("Block Header: ", hex.EncodeToString(blockHeaderSerialized), "\nBlock Hash: ", headerHash.String())
 		// break
 
-		hashInt := new(big.Int).SetBytes(headerHashRevBytes)
+		hashInt := new(big.Int).SetBytes(headerHashBytes)
 
 		// Convert the target to its compact representation
 		compactTarget := blockHeader.Bits
@@ -173,7 +174,8 @@ func VerifyBlock(txs []*wire.MsgTx) {
 		}
 		coinbaseTxSerialized := hex.EncodeToString(coinbaseBytesBuf.Bytes())
 		if compactHash <= compactTarget {
-			fmt.Println("Block successfully mined! with hash:", compactHash)
+			fmt.Println("Block found with hash: ", headerHash.String())
+			fmt.Println("Block successfully mined! with hash:", compactHash, "nonce used: ", currNonce)
 			WriteOutputToFile(hex.EncodeToString(serializedBlockHeader), coinbaseTxSerialized, txIdsInBlock)
 			break
 		} else {
