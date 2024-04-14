@@ -63,10 +63,10 @@ func ParseBlock(txs []*wire.MsgTx) *wire.MsgBlock {
 	block.AddTransaction(coinbaseTx)
 
 	// Add the remaining transactions to the block
-	// for _, tx := range txs {
-	// 	// tx := GetTxFromID(txid)
-	// 	block.AddTransaction(tx)
-	// }
+	for _, tx := range txs {
+		// tx := GetTxFromID(txid)
+		block.AddTransaction(tx)
+	}
 
 	// Serialize the block
 	var blockBuffer bytes.Buffer
@@ -90,10 +90,10 @@ func CreateMerkleTree(txs []*wire.MsgTx) (*chainhash.Hash, error) {
 	hashes = append(hashes, &coinbaseTxHash)
 
 	// Convert txids to chainhash.Hash
-	// for _, tx := range txs {
-	// 	hash := tx.TxHash()
-	// 	hashes = append(hashes, &hash)
-	// }
+	for _, tx := range txs {
+		hash := tx.TxHash()
+		hashes = append(hashes, &hash)
+	}
 
 	// Construct the Merkle tree
 	for len(hashes) > 1 {
