@@ -5,7 +5,9 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"math/big"
+	"os"
 	"strings"
 	"time"
 
@@ -19,14 +21,14 @@ func CreateBlockHeader(merkleRootHash *chainhash.Hash) *wire.BlockHeader {
 	// }
 	// for this example, i'm using block 828015 id as prev block id
 	// prevBlockHash := GetHashFromStr("00000000000000000000a9c619c4af8c09f10c11a8262bcde576450e45a126ca")
-	prevBlockHash := GetHashFromStr("0000000000000000000000000000000000000000000000000000000000000000")
+	prevBlockHash := GetHashFromStr("00000000000000000000a9c619c4af8c09f10c11a8262bcde576450e45a126ca")
 	merkleRoot := merkleRootHash
 	target := "0000ffff00000000000000000000000000000000000000000000000000000000"
 	targetBytes, _ := hex.DecodeString(target)
 	targetInt := new(big.Int).SetBytes(targetBytes)
 	bits := HexToCompactHex(targetInt)
 	wireBh := wire.NewBlockHeader(
-		1,             /* version */
+		4,             /* version */
 		prevBlockHash, /* previous block hash */
 		merkleRoot,    /* merkle root */
 		bits,          /* bits */
@@ -156,10 +158,23 @@ func VerifyBlock(txs []*wire.MsgTx) {
 
 		// Convert the target to its compact representation
 		compactTarget := blockHeader.Bits
+		serializedBlockHeader := SerializeWireBlockHeader(blockHeader)
+		txIdsInBlock := make([]string, 0)
+		for _, tx := range block.Transactions {
+			txIdsInBlock = append(txIdsInBlock, tx.TxHash().String())
+		}
 
 		compactHash := HexToCompactHex(hashInt)
+		var coinbaseBytesBuf bytes.Buffer
+		coinbaseTxSerializeErr := block.Transactions[0].Serialize(&coinbaseBytesBuf)
+		if coinbaseTxSerializeErr != nil {
+			fmt.Println("Error serializing coinbase tx: ", coinbaseTxSerializeErr)
+			return
+		}
+		coinbaseTxSerialized := hex.EncodeToString(coinbaseBytesBuf.Bytes())
 		if compactHash <= compactTarget {
 			fmt.Println("Block successfully mined! with hash:", compactHash)
+			WriteOutputToFile(hex.EncodeToString(serializedBlockHeader), coinbaseTxSerialized, txIdsInBlock)
 			break
 		} else {
 			currNonce++
@@ -212,4 +227,19 @@ func HexToCompactHex(target *big.Int) uint32 {
 
 	// Return the compact target as a uint32
 	return uint32(compact.Uint64())
+}
+
+func WriteOutputToFile(blockHeader string, serializedCoinbaseTx string, txIds []string) {
+	val := blockHeader + "\n"
+	val += serializedCoinbaseTx + "\n"
+	for _, txId := range txIds {
+		val += txId + "\n"
+	}
+	data := []byte(val)
+
+	err := os.WriteFile("output.txt", data, 0644)
+
+	if err != nil {
+		log.Fatal(err)
+	}
 }
