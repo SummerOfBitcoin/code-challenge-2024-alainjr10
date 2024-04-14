@@ -46,17 +46,28 @@ func ModBlockHeaderForMining(blockHeader *wire.BlockHeader, nonce uint32, modTim
 	return blockHeader
 }
 
+func CreateAndModCoinbaseTxWithSecondOutput(txs []*wire.MsgTx) *wire.MsgTx {
+	coinbaseTx, _ := CreateCoinbaseTx()
+	commitmentScript := CreateCoinbaseCommittmentScript(txs)
+	commitmentOutput := wire.NewTxOut(0, commitmentScript)
+	coinbaseTx.AddTxOut(commitmentOutput)
+	return coinbaseTx
+}
+
 func ParseBlock(txs []*wire.MsgTx) *wire.MsgBlock {
 	// Create the block header
-	merkleRoot, err := CreateMerkleTree(txs)
+	// Create the coinbase transaction and update it with second output
+	coinbaseTx := CreateAndModCoinbaseTxWithSecondOutput(txs)
+	// commitmentScript := CreateCoinbaseCommittmentScript(txs)
+	// commitmentOutput := wire.NewTxOut(0, commitmentScript)
+	// coinbaseTx.AddTxOut(commitmentOutput)
+
+	merkleRoot, err := CreateMerkleTree(txs, false)
 	if err != nil {
 		fmt.Println("Error creating Merkle tree: ", err)
 		return nil
 	}
 	blockHeader := CreateBlockHeader(merkleRoot)
-
-	// Create the coinbase transaction
-	coinbaseTx, _ := CreateCoinbaseTx()
 
 	// Add the coinbase transaction to the block
 	block := wire.NewMsgBlock(blockHeader)
@@ -80,14 +91,59 @@ func ParseBlock(txs []*wire.MsgTx) *wire.MsgBlock {
 
 }
 
-func CreateMerkleTree(txs []*wire.MsgTx) (*chainhash.Hash, error) {
+func CreateMerkleTree(txs []*wire.MsgTx, isWTxId bool) (*chainhash.Hash, error) {
 	coinbaseTx, _ := CreateCoinbaseTx()
+	commitmentScript := CreateCoinbaseCommittmentScript(txs)
+	commitmentOutput := wire.NewTxOut(0, commitmentScript)
+	coinbaseTx.AddTxOut(commitmentOutput)
 	coinbaseTxHash := coinbaseTx.TxHash()
+	coinbaseWTxId := fmt.Sprintf("%016x", 0)
+	coinbaseWTxIdHash, _ := chainhash.NewHashFromStr(coinbaseWTxId)
 	// validTxs := make([]string, 0)
 	// validTxs = append(validTxs, coinbaseTx.TxHash().String())
 	// Calculate the merkle root of the block
 	var hashes []*chainhash.Hash
-	hashes = append(hashes, &coinbaseTxHash)
+	if isWTxId {
+		hashes = append(hashes, coinbaseWTxIdHash)
+	} else {
+		hashes = append(hashes, &coinbaseTxHash)
+	}
+
+	// Convert txids to chainhash.Hash
+	for _, tx := range txs {
+		hash := tx.TxHash()
+		hashes = append(hashes, &hash)
+	}
+
+	// Construct the Merkle tree
+	for len(hashes) > 1 {
+		if len(hashes)%2 != 0 {
+			hashes = append(hashes, hashes[len(hashes)-1])
+		}
+
+		var newHashes []*chainhash.Hash
+		for i := 0; i < len(hashes); i += 2 {
+			hash := chainhash.DoubleHashH(append(hashes[i][:], hashes[i+1][:]...))
+			newHashes = append(newHashes, &hash)
+		}
+
+		hashes = newHashes
+	}
+	fmt.Println("Merkle Root: ", hashes[0].String())
+	return hashes[0], nil
+}
+
+func CreateWitnessMerkleTree(txs []*wire.MsgTx) (*chainhash.Hash, error) {
+	// commitmentScript := CreateCoinbaseCommittmentScript(txs)
+	// commitmentOutput := wire.NewTxOut(0, commitmentScript)
+	// coinbaseTx.AddTxOut(commitmentOutput)
+	coinbaseWTxId := fmt.Sprintf("%016x", 0)
+	coinbaseWTxIdHash, _ := chainhash.NewHashFromStr(coinbaseWTxId)
+	// validTxs := make([]string, 0)
+	// validTxs = append(validTxs, coinbaseTx.TxHash().String())
+	// Calculate the merkle root of the block
+	var hashes []*chainhash.Hash
+	hashes = append(hashes, coinbaseWTxIdHash)
 
 	// Convert txids to chainhash.Hash
 	for _, tx := range txs {
@@ -137,6 +193,11 @@ func VerifyBlock(txs []*wire.MsgTx) {
 		nonceElapsed = true
 		currNonce = 0
 	}
+	coinbaseTx := block.Transactions[0]
+	// Following section isn't needed because the coinbase transaction is already modified in the [[ParseBlock]] function
+	// commitmentScript := CreateCoinbaseCommittmentScript(txs)
+	// commitmentOutput := wire.NewTxOut(0, commitmentScript)
+	// coinbaseTx.AddTxOut(commitmentOutput)
 	for !blockMined {
 		var blockHeader *wire.BlockHeader
 		if nonceElapsed {
@@ -167,7 +228,7 @@ func VerifyBlock(txs []*wire.MsgTx) {
 
 		compactHash := HexToCompactHex(hashInt)
 		var coinbaseBytesBuf bytes.Buffer
-		coinbaseTxSerializeErr := block.Transactions[0].Serialize(&coinbaseBytesBuf)
+		coinbaseTxSerializeErr := coinbaseTx.Serialize(&coinbaseBytesBuf)
 		if coinbaseTxSerializeErr != nil {
 			fmt.Println("Error serializing coinbase tx: ", coinbaseTxSerializeErr)
 			return

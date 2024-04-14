@@ -168,14 +168,16 @@ func ValidateTxHashes(transaction types.TransactionData) bool {
 	return txIsVerified
 }
 
-func SerializeATx(transaction types.TransactionData) (*wire.MsgTx, []byte) {
+func SerializeATx(transaction types.TransactionData) (*wire.MsgTx, *wire.MsgTx, []byte) {
 	numberOfInputs := len(transaction.Vin)
 	numberOfOutputs := len(transaction.Vout)
 	tx := wire.NewMsgTx(int32(transaction.Version))
+	wTx := wire.NewMsgTx(int32(transaction.Version))
 
 	// Add the inputs
 	for i := 0; i < numberOfInputs; i++ {
 		var txIn *wire.TxIn
+		var wTxIn *wire.TxIn
 		input := transaction.Vin[i]
 		prevOutHash, _ := chainhash.NewHashFromStr(input.TxID)
 		prevOut := wire.NewOutPoint(prevOutHash, uint32(input.Vout))
@@ -187,12 +189,16 @@ func SerializeATx(transaction types.TransactionData) (*wire.MsgTx, []byte) {
 				witness[i], _ = hex.DecodeString(w)
 			}
 			txIn = wire.NewTxIn(prevOut, scriptSig, nil)
+			wTxIn = wire.NewTxIn(prevOut, scriptSig, witness)
 		} else {
 			txIn = wire.NewTxIn(prevOut, scriptSig, nil)
+			wTxIn = wire.NewTxIn(prevOut, scriptSig, nil)
 		}
 
 		txIn.Sequence = uint32(input.Sequence)
+		wTxIn.Sequence = uint32(input.Sequence)
 		tx.AddTxIn(txIn)
+		wTx.AddTxIn(wTxIn)
 	}
 
 	// Add the outputs
@@ -204,6 +210,7 @@ func SerializeATx(transaction types.TransactionData) (*wire.MsgTx, []byte) {
 	}
 
 	tx.LockTime = uint32(transaction.Locktime)
+	wTx.LockTime = uint32(transaction.Locktime)
 
 	// Serialize
 	var txBuffer bytes.Buffer
@@ -211,10 +218,10 @@ func SerializeATx(transaction types.TransactionData) (*wire.MsgTx, []byte) {
 	serializeErr := tx.Serialize(&txBuffer)
 	if serializeErr != nil {
 		fmt.Println("Error serializing transaction:", serializeErr)
-		return nil, nil
+		return nil, nil, nil
 	}
 	rawTxBytes := txBuffer.Bytes()
-	return tx, rawTxBytes
+	return tx, wTx, rawTxBytes
 }
 
 func SerializeATxWOSigScript(transaction types.TransactionData) []byte {

@@ -42,6 +42,7 @@ func main() {
 	validTxIds := make([]string, 0)
 	validRawTxs := make([]string, 0)
 	var validTxs []*wire.MsgTx
+	var validTxsWithWitness []*wire.MsgTx
 	coinbaseTxBytes, coinbaseTxHex := handlers.PrintCoinbaseTx()
 	coinbaseTxId := chainhash.DoubleHashH(coinbaseTxBytes)
 	validTxIds = append(validTxIds, coinbaseTxId.String())
@@ -63,12 +64,13 @@ func main() {
 				if tx.Vin[0].Prevout.ScriptPubKeyType == "p2pkh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wpkh" {
 					res := handlers.FullTxValidation(tx)
 					if res {
-						serializedTx, serializedTxBytes := handlers.SerializeATx(tx)
+						serializedTx, serializedTxWithWitness, serializedTxBytes := handlers.SerializeATx(tx)
 						serializedTxHex := hex.EncodeToString(serializedTxBytes)
 						serializedTxId := chainhash.DoubleHashH(serializedTxBytes)
 						validTxIds = append(validTxIds, serializedTxId.String())
 						validRawTxs = append(validRawTxs, serializedTxHex)
 						validTxs = append(validTxs, serializedTx)
+						validTxsWithWitness = append(validTxsWithWitness, serializedTxWithWitness)
 					}
 				} else {
 					continue

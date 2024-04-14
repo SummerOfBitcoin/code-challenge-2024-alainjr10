@@ -94,6 +94,21 @@ func PrintCoinbaseTx() ([]byte, string) {
 	return SerializeWireMsgTx(tx), hexEncoded
 }
 
+func CreateCoinbaseCommittmentScript(txs []*wire.MsgTx) []byte {
+	witnessRootHash, _ := CreateWitnessMerkleTree(txs)
+	witnessReservedValue := "0000000000000000000000000000000000000000000000000000000000000000"
+	witnessRootHashBytes, _ := hex.DecodeString(witnessRootHash.String())
+	witnessReservedValueBytes, _ := hex.DecodeString(witnessReservedValue)
+	wTxIdCommitment := chainhash.DoubleHashH(append(witnessRootHashBytes, witnessReservedValueBytes...))
+	wTxIdCommitmentHash, _ := hex.DecodeString(wTxIdCommitment.String())
+	// prefixBytes, _ := hex.DecodeString("aa21a9ed")
+	commitmentScript, err := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).AddData(wTxIdCommitmentHash).Script()
+	if err != nil {
+		fmt.Println("Error creating commitment script: ", err)
+	}
+	return commitmentScript
+}
+
 func createCoinbaseScriptSig() []byte {
 	// Convert block height to a byte slice
 	height := fmt.Sprintf("%06x", 838770)
