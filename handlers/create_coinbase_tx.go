@@ -101,7 +101,8 @@ func CreateCoinbaseCommittmentScript(txs []*wire.MsgTx) []byte {
 	witnessRootHashBytes, _ := hex.DecodeString(witnessRootHashRev)
 	witnessReservedValueBytes, _ := hex.DecodeString(witnessReservedValue)
 	wTxIdCommitment := chainhash.DoubleHashH(append(witnessRootHashBytes, witnessReservedValueBytes...))
-	wTxIdCommitmentHash, _ := hex.DecodeString(wTxIdCommitment.String())
+	wTxIdCommitmentRev := ReverseBytesFromHexStr(wTxIdCommitment.String())
+	wTxIdCommitmentHash, _ := hex.DecodeString(wTxIdCommitmentRev)
 	prefixBytes, _ := hex.DecodeString("aa21a9ed")
 	commitmentScript, err := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).AddData(append(prefixBytes, wTxIdCommitmentHash...)).Script()
 	if err != nil {
