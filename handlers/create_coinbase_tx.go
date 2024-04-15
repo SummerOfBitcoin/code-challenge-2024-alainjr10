@@ -96,8 +96,9 @@ func PrintCoinbaseTx() ([]byte, string) {
 
 func CreateCoinbaseCommittmentScript(txs []*wire.MsgTx) []byte {
 	witnessRootHash, _ := CreateWitnessMerkleTree(txs)
+	witnessRootHashRev := ReverseBytesFromHexStr(witnessRootHash.String())
 	witnessReservedValue := "0000000000000000000000000000000000000000000000000000000000000000"
-	witnessRootHashBytes, _ := hex.DecodeString(witnessRootHash.String())
+	witnessRootHashBytes, _ := hex.DecodeString(witnessRootHashRev)
 	witnessReservedValueBytes, _ := hex.DecodeString(witnessReservedValue)
 	wTxIdCommitment := chainhash.DoubleHashH(append(witnessRootHashBytes, witnessReservedValueBytes...))
 	wTxIdCommitmentHash, _ := hex.DecodeString(wTxIdCommitment.String())
