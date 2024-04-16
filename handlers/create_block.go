@@ -149,11 +149,9 @@ func CreateWitnessMerkleTree(txs []*wire.MsgTx) (*chainhash.Hash, error) {
 
 	// Convert txids to chainhash.Hash
 	for _, tx := range txs {
-		var txBytes bytes.Buffer
-		tx.Serialize(&txBytes)
 		hash := tx.TxHash()
-		revTxId := ReverseBytesFromHexStr(hash.String())
-		hashRev, revHashErr := chainhash.NewHashFromStr(revTxId)
+		// revTxId := ReverseBytesFromHexStr(hash.String())
+		hashRev, revHashErr := chainhash.NewHashFromStr(hash.String())
 		if revHashErr != nil {
 			fmt.Println("Error reversing hash: ", revHashErr)
 		}
