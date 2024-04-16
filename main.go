@@ -89,7 +89,9 @@ func main() {
 	// handlers.SerializedBlockTxs(validRawTxs)
 
 	// handlers.CreateBlockHeader()
-	handlers.VerifyBlock(validTxs)
+	coinbaseComScript := handlers.CreateCoinbaseCommittmentScript(validTxsWithWitness)
+	modCoinbaseTx := handlers.CreateAndModCoinbaseTxWithSecondOutput(coinbaseComScript)
+	handlers.VerifyBlock(validTxs, modCoinbaseTx)
 
 }
 

@@ -46,9 +46,9 @@ func ModBlockHeaderForMining(blockHeader *wire.BlockHeader, nonce uint32, modTim
 	return blockHeader
 }
 
-func CreateAndModCoinbaseTxWithSecondOutput(txs []*wire.MsgTx) *wire.MsgTx {
+func CreateAndModCoinbaseTxWithSecondOutput(commitmentScript []byte) *wire.MsgTx {
 	coinbaseTx, _ := CreateCoinbaseTx()
-	commitmentScript := CreateCoinbaseCommittmentScript(txs)
+	// commitmentScript := CreateCoinbaseCommittmentScript(txs)
 	commitmentOutput := wire.NewTxOut(0, commitmentScript)
 	coinbaseTx.AddTxOut(commitmentOutput)
 	witnessItem := fmt.Sprintf("%064x", 0)
@@ -57,15 +57,15 @@ func CreateAndModCoinbaseTxWithSecondOutput(txs []*wire.MsgTx) *wire.MsgTx {
 	return coinbaseTx
 }
 
-func ParseBlock(txs []*wire.MsgTx) *wire.MsgBlock {
+func ParseBlock(txs []*wire.MsgTx, coinbaseTx *wire.MsgTx) *wire.MsgBlock {
 	// Create the block header
 	// Create the coinbase transaction and update it with second output
-	coinbaseTx := CreateAndModCoinbaseTxWithSecondOutput(txs)
+	// coinbaseTx := CreateAndModCoinbaseTxWithSecondOutput(txs)
 	// commitmentScript := CreateCoinbaseCommittmentScript(txs)
 	// commitmentOutput := wire.NewTxOut(0, commitmentScript)
 	// coinbaseTx.AddTxOut(commitmentOutput)
 
-	merkleRoot, err := CreateMerkleTree(txs, false)
+	merkleRoot, err := CreateMerkleTree(txs, false, coinbaseTx)
 	if err != nil {
 		fmt.Println("Error creating Merkle tree: ", err)
 		return nil
@@ -94,8 +94,8 @@ func ParseBlock(txs []*wire.MsgTx) *wire.MsgBlock {
 
 }
 
-func CreateMerkleTree(txs []*wire.MsgTx, isWTxId bool) (*chainhash.Hash, error) {
-	coinbaseTx := CreateAndModCoinbaseTxWithSecondOutput(txs)
+func CreateMerkleTree(txs []*wire.MsgTx, isWTxId bool, coinbaseTx *wire.MsgTx) (*chainhash.Hash, error) {
+	// coinbaseTx := CreateAndModCoinbaseTxWithSecondOutput(txs)
 	coinbaseTx.TxIn[0].Witness = nil
 	coinbaseTxHash := coinbaseTx.TxHash()
 	coinbaseWTxId := fmt.Sprintf("%016x", 0)
@@ -138,7 +138,7 @@ func CreateWitnessMerkleTree(txs []*wire.MsgTx) (*chainhash.Hash, error) {
 	// commitmentScript := CreateCoinbaseCommittmentScript(txs)
 	// commitmentOutput := wire.NewTxOut(0, commitmentScript)
 	// coinbaseTx.AddTxOut(commitmentOutput)
-	coinbaseWTxId := fmt.Sprintf("%064x", 0)
+	coinbaseWTxId := "0000000000000000000000000000000000000000000000000000000000000000"
 	coinbaseWTxIdHash, _ := chainhash.NewHashFromStr(coinbaseWTxId)
 	// validTxs := make([]string, 0)
 	// validTxs = append(validTxs, coinbaseTx.TxHash().String())
@@ -183,8 +183,8 @@ func GetHashFromStr(s string) *chainhash.Hash {
 	return hash
 }
 
-func VerifyBlock(txs []*wire.MsgTx) {
-	block := ParseBlock(txs)
+func VerifyBlock(txs []*wire.MsgTx, updatedCoinbaseTx *wire.MsgTx) {
+	block := ParseBlock(txs, updatedCoinbaseTx)
 	blockMined := false
 	nonceElapsed := false
 	var currNonce uint32
