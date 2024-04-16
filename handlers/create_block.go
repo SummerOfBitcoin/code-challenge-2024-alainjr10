@@ -167,7 +167,7 @@ func CreateWitnessMerkleTree(txs []*wire.MsgTx) (*chainhash.Hash, error) {
 
 		hashes = newHashes
 	}
-	fmt.Println("Merkle Root: ", hashes[0].String())
+	fmt.Println("Witness Merkle Root: ", hashes[0].String())
 	return hashes[0], nil
 }
 
