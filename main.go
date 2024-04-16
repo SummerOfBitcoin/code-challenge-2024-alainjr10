@@ -94,19 +94,3 @@ func main() {
 	handlers.VerifyBlock(validTxs, modCoinbaseTx)
 
 }
-
-func getValidTxOfCertainTypes(transactions []types.TransactionData, txType string) {
-	scanLimit := make([]bool, 0)
-	scanLimit = append(scanLimit, true)
-	for _, tx := range transactions {
-		if scanLimit[len(scanLimit)-1] {
-			if len(tx.Vin) == 1 {
-				if tx.Vin[0].Prevout.ScriptPubKeyType == txType {
-					res := handlers.VerifyTxSig(tx)
-					scanLimit = append(scanLimit, res)
-				}
-			}
-		}
-
-	}
-}

@@ -209,6 +209,7 @@ func SerializeATx(transaction types.TransactionData) (*wire.MsgTx, *wire.MsgTx, 
 		scriptPubKey, _ := hex.DecodeString(output.ScriptPubKey)
 		txOut := wire.NewTxOut(int64(output.Value), scriptPubKey)
 		tx.AddTxOut(txOut)
+		wTx.AddTxOut(txOut)
 	}
 
 	tx.LockTime = uint32(transaction.Locktime)
