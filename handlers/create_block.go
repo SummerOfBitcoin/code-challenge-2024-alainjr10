@@ -150,7 +150,12 @@ func CreateWitnessMerkleTree(txs []*wire.MsgTx) (*chainhash.Hash, error) {
 	// Convert txids to chainhash.Hash
 	for _, tx := range txs {
 		hash := tx.TxHash()
-		hashes = append(hashes, &hash)
+		revTxId := ReverseBytesFromHexStr(hash.String())
+		hashRev, revHashErr := chainhash.NewHashFromStr(revTxId)
+		if revHashErr != nil {
+			fmt.Println("Error reversing hash: ", revHashErr)
+		}
+		hashes = append(hashes, hashRev)
 	}
 
 	// Construct the Merkle tree

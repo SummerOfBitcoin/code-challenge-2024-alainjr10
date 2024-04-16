@@ -183,7 +183,9 @@ func SerializeATx(transaction types.TransactionData) (*wire.MsgTx, *wire.MsgTx, 
 		prevOut := wire.NewOutPoint(prevOutHash, uint32(input.Vout))
 		scriptSig, _ := hex.DecodeString(input.ScriptSig)
 		var witness [][]byte
-		if transaction.Vin[i].Witness != nil && len(transaction.Vin[i].Witness) > 0 {
+		// if transaction.Vin[i].Witness != nil && len(transaction.Vin[i].Witness) > 0 {
+		if transaction.Vin[i].Prevout.ScriptPubKeyType == "v0_p2wpkh" {
+
 			witness = make([][]byte, len(input.Witness))
 			for i, w := range input.Witness {
 				witness[i], _ = hex.DecodeString(w)

@@ -97,12 +97,13 @@ func PrintCoinbaseTx() ([]byte, string) {
 func CreateCoinbaseCommittmentScript(txs []*wire.MsgTx) []byte {
 	witnessRootHash, _ := CreateWitnessMerkleTree(txs)
 	witnessRootHashRev := ReverseBytesFromHexStr(witnessRootHash.String())
-	witnessReservedValue := "0000000000000000000000000000000000000000000000000000000000000000"
+	// witnessReservedValue := "0000000000000000000000000000000000000000000000000000000000000000"
+	witnessReservedValue := make([]byte, 32)
 	witnessRootHashBytes, _ := hex.DecodeString(witnessRootHashRev)
-	witnessReservedValueBytes, _ := hex.DecodeString(witnessReservedValue)
-	wTxIdCommitment := chainhash.DoubleHashH(append(witnessRootHashBytes, witnessReservedValueBytes...))
-	// wTxIdCommitmentRev := ReverseBytesFromHexStr(wTxIdCommitment.String())
-	wTxIdCommitmentHash, _ := hex.DecodeString(wTxIdCommitment.String())
+	// witnessReservedValueBytes, _ := hex.DecodeString(witnessReservedValue)
+	wTxIdCommitment := chainhash.DoubleHashH(append(witnessRootHashBytes, witnessReservedValue...))
+	wTxIdCommitmentRev := ReverseBytesFromHexStr(wTxIdCommitment.String())
+	wTxIdCommitmentHash, _ := hex.DecodeString(wTxIdCommitmentRev)
 	prefixBytes, _ := hex.DecodeString("aa21a9ed")
 	commitmentScript, err := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).AddData(append(prefixBytes, wTxIdCommitmentHash...)).Script()
 	if err != nil {
