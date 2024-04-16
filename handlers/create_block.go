@@ -114,7 +114,10 @@ func CreateMerkleTree(txs []*wire.MsgTx, isWTxId bool, coinbaseTx *wire.MsgTx) (
 	// Convert txids to chainhash.Hash
 	for _, tx := range txs {
 		hash := tx.TxHash()
-		hashes = append(hashes, &hash)
+		// let's reverse the order of the hash, so as to get the txid in natural byte order
+		val2 := hex.EncodeToString(hash.CloneBytes())
+		newHash, _ := chainhash.NewHashFromStr(val2)
+		hashes = append(hashes, newHash)
 	}
 
 	// Construct the Merkle tree
@@ -125,8 +128,9 @@ func CreateMerkleTree(txs []*wire.MsgTx, isWTxId bool, coinbaseTx *wire.MsgTx) (
 
 		var newHashes []*chainhash.Hash
 		for i := 0; i < len(hashes); i += 2 {
-			hash := chainhash.DoubleHashH(append(hashes[i][:], hashes[i+1][:]...))
-			newHashes = append(newHashes, &hash)
+			hash := chainhash.DoubleHashB(append(hashes[i][:], hashes[i+1][:]...))
+			hashHash, _ := chainhash.NewHashFromStr(hex.EncodeToString(hash))
+			newHashes = append(newHashes, hashHash)
 		}
 
 		hashes = newHashes
@@ -149,9 +153,14 @@ func CreateWitnessMerkleTree(txs []*wire.MsgTx) (*chainhash.Hash, error) {
 
 	// Convert txids to chainhash.Hash
 	for _, tx := range txs {
-		hash := tx.TxHash()
-		// revTxId := ReverseBytesFromHexStr(hash.String())
-		hashRev, revHashErr := chainhash.NewHashFromStr(hash.String())
+		var txBytes bytes.Buffer
+		tx.Serialize(&txBytes)
+		// fmt.Println("Tx: ", hex.EncodeToString(txBytes.Bytes()))
+		// hash2 := tx.TxHash() // this actuall gives the txid, excluding witness data and flags
+		hash := chainhash.DoubleHashB(txBytes.Bytes())
+		// fmt.Println("Tx Hash: ", hex.EncodeToString(hash))
+		// revWTxId := ReverseBytesFromBytes(hash)
+		hashRev, revHashErr := chainhash.NewHashFromStr(hex.EncodeToString(hash))
 		if revHashErr != nil {
 			fmt.Println("Error reversing hash: ", revHashErr)
 		}
@@ -166,8 +175,9 @@ func CreateWitnessMerkleTree(txs []*wire.MsgTx) (*chainhash.Hash, error) {
 
 		var newHashes []*chainhash.Hash
 		for i := 0; i < len(hashes); i += 2 {
-			hash := chainhash.DoubleHashH(append(hashes[i][:], hashes[i+1][:]...))
-			newHashes = append(newHashes, &hash)
+			hash := chainhash.DoubleHashB(append(hashes[i][:], hashes[i+1][:]...))
+			hashHash, _ := chainhash.NewHashFromStr(hex.EncodeToString(hash))
+			newHashes = append(newHashes, hashHash)
 		}
 
 		hashes = newHashes

@@ -597,6 +597,20 @@ func ReverseBytesFromHexStr(str string) string {
 	return hex.EncodeToString(reversed)
 }
 
+func StringToBytes(str string) []byte {
+	bytes, err := hex.DecodeString(str)
+	if err != nil {
+		fmt.Println("Error decoding string to bytes:", err)
+		return nil
+	}
+	return bytes
+}
+
+func ReverseBytesFromBytes(bytes []byte) []byte {
+	reversed := ReverseSlice(bytes)
+	return reversed
+}
+
 func GetFileName(hexValue string) []byte {
 	value, _ := hex.DecodeString(hexValue)
 	doubleHash := chainhash.DoubleHashB(value)
