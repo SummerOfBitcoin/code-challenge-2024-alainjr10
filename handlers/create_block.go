@@ -96,7 +96,8 @@ func ParseBlock(txs []*wire.MsgTx, coinbaseTx *wire.MsgTx) *wire.MsgBlock {
 
 func CreateMerkleTree(txs []*wire.MsgTx, isWTxId bool, coinbaseTx *wire.MsgTx) (*chainhash.Hash, error) {
 	// coinbaseTx := CreateAndModCoinbaseTxWithSecondOutput(txs)
-	coinbaseTx.TxIn[0].Witness = nil
+	coinbaseTxCopy := coinbaseTx.Copy()
+	coinbaseTxCopy.TxIn[0].Witness = nil
 	coinbaseTxHash := coinbaseTx.TxHash()
 	coinbaseWTxId := fmt.Sprintf("%016x", 0)
 	coinbaseWTxIdHash, _ := chainhash.NewHashFromStr(coinbaseWTxId)
