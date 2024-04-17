@@ -73,7 +73,7 @@ func ParseBlock(txs []*wire.MsgTx, coinbaseTx *wire.MsgTx) *wire.MsgBlock {
 	revMerkleRootStr := hex.EncodeToString(merkleRoot.CloneBytes())
 	revMerkleRootHash := GetHashFromStr(revMerkleRootStr)
 	fmt.Println("new merkle root: ", revMerkleRootHash.String())
-	blockHeader := CreateBlockHeader(merkleRoot)
+	blockHeader := CreateBlockHeader(revMerkleRootHash)
 
 	// Add the coinbase transaction to the block
 	block := wire.NewMsgBlock(blockHeader)
@@ -98,33 +98,28 @@ func ParseBlock(txs []*wire.MsgTx, coinbaseTx *wire.MsgTx) *wire.MsgBlock {
 }
 
 func CreateMerkleTree(txs []*wire.MsgTx, isWTxId bool, coinbaseTx *wire.MsgTx) (*chainhash.Hash, error) {
-	// coinbaseTx := CreateAndModCoinbaseTxWithSecondOutput(txs)
-	// coinbaseTxCopy := coinbaseTx.Copy()
-	// coinbaseTxCopy.TxIn[0].Witness = nil
 	var coinbaseBy bytes.Buffer
 	coinbaseTx.Serialize(&coinbaseBy)
 	coinbaseTxHash := coinbaseTx.TxHash()
-	coinbaseTx2 := hex.EncodeToString(coinbaseTxHash.CloneBytes())
-	newCoinbaseTxHash, _ := chainhash.NewHashFromStr(coinbaseTx2)
+	// coinbaseTx2 := hex.EncodeToString(coinbaseTxHash.CloneBytes())
+	// newCoinbaseTxHash, _ := chainhash.NewHashFromStr(coinbaseTx2)
 	coinbaseWTxId := fmt.Sprintf("%016x", 0)
 	coinbaseWTxIdHash, _ := chainhash.NewHashFromStr(coinbaseWTxId)
-	// validTxs := make([]string, 0)
-	// validTxs = append(validTxs, coinbaseTx.TxHash().String())
 	// Calculate the merkle root of the block
 	var hashes []*chainhash.Hash
 	if isWTxId {
 		hashes = append(hashes, coinbaseWTxIdHash)
 	} else {
-		hashes = append(hashes, newCoinbaseTxHash)
+		hashes = append(hashes, &coinbaseTxHash)
 	}
 
 	// Convert txids to chainhash.Hash
 	for _, tx := range txs {
 		hash := tx.TxHash()
 		// let's reverse the order of the hash, so as to get the txid in natural byte order
-		val2 := hex.EncodeToString(hash.CloneBytes())
-		newHash, _ := chainhash.NewHashFromStr(val2)
-		hashes = append(hashes, newHash)
+		// val2 := hex.EncodeToString(hash.CloneBytes())
+		// newHash, _ := chainhash.NewHashFromStr(val2)
+		hashes = append(hashes, &hash)
 	}
 
 	// Construct the Merkle tree
