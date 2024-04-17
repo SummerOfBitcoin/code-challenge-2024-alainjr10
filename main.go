@@ -59,31 +59,31 @@ func main() {
 		// 	res := handlers.VerifyTxSig(tx)
 		// 	fmt.Println("Result: ", res)
 		// }
-		if len(validTxIds) < 5 {
-			if len(tx.Vin) == 1 {
-				if tx.Vin[0].Prevout.ScriptPubKeyType == "p2pkh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wpkh" {
-					res := handlers.FullTxValidation(tx)
-					serializedAllTx, _, _ := handlers.SerializeATx(tx)
-					allTxs = append(allTxs, serializedAllTx)
-					if res {
-						serializedTx, serializedTxWithWitness, serializedTxBytes := handlers.SerializeATx(tx)
-						serializedTxHex := hex.EncodeToString(serializedTxBytes)
-						serializedTxId := chainhash.DoubleHashH(serializedTxBytes)
-						validTxIds = append(validTxIds, serializedTxId.String())
-						validRawTxs = append(validRawTxs, serializedTxHex)
-						validTxs = append(validTxs, serializedTx)
-						validTxsWithWitness = append(validTxsWithWitness, serializedTxWithWitness)
-					}
-				} else {
-					continue
+		// if len(validTxIds) < 5 {
+		if len(tx.Vin) == 1 {
+			if tx.Vin[0].Prevout.ScriptPubKeyType == "p2pkh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wpkh" {
+				res := handlers.FullTxValidation(tx)
+				serializedAllTx, _, _ := handlers.SerializeATx(tx)
+				allTxs = append(allTxs, serializedAllTx)
+				if res {
+					serializedTx, serializedTxWithWitness, serializedTxBytes := handlers.SerializeATx(tx)
+					serializedTxHex := hex.EncodeToString(serializedTxBytes)
+					serializedTxId := chainhash.DoubleHashH(serializedTxBytes)
+					validTxIds = append(validTxIds, serializedTxId.String())
+					validRawTxs = append(validRawTxs, serializedTxHex)
+					validTxs = append(validTxs, serializedTx)
+					validTxsWithWitness = append(validTxsWithWitness, serializedTxWithWitness)
 				}
 			} else {
 				continue
 			}
-
 		} else {
-			break
+			continue
 		}
+
+		// } else {
+		// 	break
+		// }
 
 	}
 	// fmt.Println("length of valid TxIds, ", len(validTxIds))
