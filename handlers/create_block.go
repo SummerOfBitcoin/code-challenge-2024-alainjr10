@@ -73,7 +73,7 @@ func ParseBlock(txs []*wire.MsgTx, coinbaseTx *wire.MsgTx) *wire.MsgBlock {
 	revMerkleRootStr := hex.EncodeToString(merkleRoot.CloneBytes())
 	revMerkleRootHash := GetHashFromStr(revMerkleRootStr)
 	fmt.Println("new merkle root: ", revMerkleRootHash.String())
-	blockHeader := CreateBlockHeader(revMerkleRootHash)
+	blockHeader := CreateBlockHeader(merkleRoot)
 
 	// Add the coinbase transaction to the block
 	block := wire.NewMsgBlock(blockHeader)
