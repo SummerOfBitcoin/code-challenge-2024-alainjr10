@@ -162,13 +162,13 @@ func CreateWitnessMerkleTree(txs []*wire.MsgTx) (*chainhash.Hash, error) {
 		hash := chainhash.DoubleHashB(txBytes.Bytes())
 		// fmt.Println("Tx Hash: ", hex.EncodeToString(hash))
 		// revWTxId := ReverseBytesFromBytes(hash)
-		hashRev, revHashErr := chainhash.NewHashFromStr(hex.EncodeToString(hash))
+		hashRev, revHashErr := chainhash.NewHashFromStr(ReverseBytesFromHexStr(hex.EncodeToString(hash)))
+		// fmt.Println("Tx: ", hex.EncodeToString(txBytes.Bytes()), "\nHash: ", hashRev)
 		if revHashErr != nil {
 			fmt.Println("Error reversing hash: ", revHashErr)
 		}
 		hashes = append(hashes, hashRev)
 	}
-
 	// Construct the Merkle tree
 	for len(hashes) > 1 {
 		if len(hashes)%2 != 0 {
@@ -177,9 +177,9 @@ func CreateWitnessMerkleTree(txs []*wire.MsgTx) (*chainhash.Hash, error) {
 
 		var newHashes []*chainhash.Hash
 		for i := 0; i < len(hashes); i += 2 {
-			hash := chainhash.DoubleHashB(append(hashes[i][:], hashes[i+1][:]...))
-			hashHash, _ := chainhash.NewHashFromStr(hex.EncodeToString(hash))
-			newHashes = append(newHashes, hashHash)
+			hash := chainhash.DoubleHashH(append(hashes[i][:], hashes[i+1][:]...))
+			// hashHash, _ := chainhash.NewHashFromStr(hex.EncodeToString(hash))
+			newHashes = append(newHashes, &hash)
 		}
 
 		hashes = newHashes
