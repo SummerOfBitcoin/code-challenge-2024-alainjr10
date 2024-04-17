@@ -70,7 +70,10 @@ func ParseBlock(txs []*wire.MsgTx, coinbaseTx *wire.MsgTx) *wire.MsgBlock {
 		fmt.Println("Error creating Merkle tree: ", err)
 		return nil
 	}
-	blockHeader := CreateBlockHeader(merkleRoot)
+	revMerkleRootStr := hex.EncodeToString(merkleRoot.CloneBytes())
+	revMerkleRootHash := GetHashFromStr(revMerkleRootStr)
+	fmt.Println("new merkle root: ", revMerkleRootHash.String())
+	blockHeader := CreateBlockHeader(revMerkleRootHash)
 
 	// Add the coinbase transaction to the block
 	block := wire.NewMsgBlock(blockHeader)
@@ -96,9 +99,13 @@ func ParseBlock(txs []*wire.MsgTx, coinbaseTx *wire.MsgTx) *wire.MsgBlock {
 
 func CreateMerkleTree(txs []*wire.MsgTx, isWTxId bool, coinbaseTx *wire.MsgTx) (*chainhash.Hash, error) {
 	// coinbaseTx := CreateAndModCoinbaseTxWithSecondOutput(txs)
-	coinbaseTxCopy := coinbaseTx.Copy()
-	coinbaseTxCopy.TxIn[0].Witness = nil
+	// coinbaseTxCopy := coinbaseTx.Copy()
+	// coinbaseTxCopy.TxIn[0].Witness = nil
+	var coinbaseBy bytes.Buffer
+	coinbaseTx.Serialize(&coinbaseBy)
 	coinbaseTxHash := coinbaseTx.TxHash()
+	coinbaseTx2 := hex.EncodeToString(coinbaseTxHash.CloneBytes())
+	newCoinbaseTxHash, _ := chainhash.NewHashFromStr(coinbaseTx2)
 	coinbaseWTxId := fmt.Sprintf("%016x", 0)
 	coinbaseWTxIdHash, _ := chainhash.NewHashFromStr(coinbaseWTxId)
 	// validTxs := make([]string, 0)
@@ -108,7 +115,7 @@ func CreateMerkleTree(txs []*wire.MsgTx, isWTxId bool, coinbaseTx *wire.MsgTx) (
 	if isWTxId {
 		hashes = append(hashes, coinbaseWTxIdHash)
 	} else {
-		hashes = append(hashes, &coinbaseTxHash)
+		hashes = append(hashes, newCoinbaseTxHash)
 	}
 
 	// Convert txids to chainhash.Hash
@@ -128,9 +135,9 @@ func CreateMerkleTree(txs []*wire.MsgTx, isWTxId bool, coinbaseTx *wire.MsgTx) (
 
 		var newHashes []*chainhash.Hash
 		for i := 0; i < len(hashes); i += 2 {
-			hash := chainhash.DoubleHashB(append(hashes[i][:], hashes[i+1][:]...))
-			hashHash, _ := chainhash.NewHashFromStr(hex.EncodeToString(hash))
-			newHashes = append(newHashes, hashHash)
+			// for some reason, when i change this to chainhash.DoubleHashH , it gives a different/wrong hash
+			merkleRootTxHash := chainhash.DoubleHashH(append(hashes[i][:], hashes[i+1][:]...))
+			newHashes = append(newHashes, &merkleRootTxHash)
 		}
 
 		hashes = newHashes
