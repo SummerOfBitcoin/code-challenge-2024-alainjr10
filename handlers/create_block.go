@@ -248,9 +248,9 @@ func VerifyBlock(txs []*wire.MsgTx, updatedCoinbaseTx *wire.MsgTx) {
 		txIdsInBlock := make([]string, 0)
 		for _, tx := range block.Transactions {
 			txIdHash := tx.TxHash()
-			newTxIdStr := hex.EncodeToString(txIdHash.CloneBytes())
+			// newTxIdStr := hex.EncodeToString(txIdHash.CloneBytes())
 			// newTxId,_ := chainhash.NewHashFromStr(newTxIdStr)
-			txIdsInBlock = append(txIdsInBlock, newTxIdStr)
+			txIdsInBlock = append(txIdsInBlock, txIdHash.String())
 		}
 
 		compactHash := HexToCompactHex(hashInt)
