@@ -96,10 +96,10 @@ func PrintCoinbaseTx() ([]byte, string) {
 
 func CreateCoinbaseCommittmentScript(txs []*wire.MsgTx) []byte {
 	witnessRootHash, _ := CreateWitnessMerkleTree(txs)
-	// witnessRootHashRev := ReverseBytesFromHexStr(witnessRootHash.String())
+	witnessRootHashRev, _ := chainhash.NewHashFromStr(ReverseBytesFromHexStr(witnessRootHash.String()))
 	// witnessReservedValue := "0000000000000000000000000000000000000000000000000000000000000000"
 	witnessReservedValue := make([]byte, 32)
-	witnessRootHashBytes, _ := hex.DecodeString(witnessRootHash.String())
+	witnessRootHashBytes, _ := hex.DecodeString(witnessRootHashRev.String())
 	// witnessReservedValueBytes, _ := hex.DecodeString(witnessReservedValue)
 	wTxIdCommitment := chainhash.DoubleHashH(append(witnessRootHashBytes, witnessReservedValue...))
 	// for this method, call hex.encodetostring(wtxidcommitment2) to get the value in natural byte order. We have a similar behavior below, when we manually reverse byte order
