@@ -84,7 +84,6 @@ func ParseBlock(txs []*wire.MsgTx, coinbaseTx *wire.MsgTx) *wire.MsgBlock {
 		// tx := GetTxFromID(txid)
 		block.AddTransaction(tx)
 	}
-
 	// Serialize the block
 	var blockBuffer bytes.Buffer
 	blockSerializeErr := block.Serialize(&blockBuffer)
@@ -217,6 +216,14 @@ func VerifyBlock(txs []*wire.MsgTx, updatedCoinbaseTx *wire.MsgTx) {
 	// commitmentScript := CreateCoinbaseCommittmentScript(txs)
 	// commitmentOutput := wire.NewTxOut(0, commitmentScript)
 	// coinbaseTx.AddTxOut(commitmentOutput)
+	txIdsInBlock := make([]string, 0)
+	for _, tx := range block.Transactions {
+		txIdHash := tx.TxHash()
+		// newTxIdStr := hex.EncodeToString(txIdHash.CloneBytes())
+		// newTxId, _ := chainhash.NewHashFromStr(newTxIdStr)
+		txIdsInBlock = append(txIdsInBlock, txIdHash.String())
+	}
+
 	for !blockMined {
 		var blockHeader *wire.BlockHeader
 		if nonceElapsed {
@@ -240,14 +247,6 @@ func VerifyBlock(txs []*wire.MsgTx, updatedCoinbaseTx *wire.MsgTx) {
 		// Convert the target to its compact representation
 		compactTarget := blockHeader.Bits
 		serializedBlockHeader := SerializeWireBlockHeader(blockHeader)
-		txIdsInBlock := make([]string, 0)
-		for _, tx := range block.Transactions {
-			txIdHash := tx.TxHash()
-			// newTxIdStr := hex.EncodeToString(txIdHash.CloneBytes())
-			// newTxId,_ := chainhash.NewHashFromStr(newTxIdStr)
-			txIdsInBlock = append(txIdsInBlock, txIdHash.String())
-		}
-
 		compactHash := HexToCompactHex(hashInt)
 		var coinbaseBytesBuf bytes.Buffer
 		coinbaseTxSerializeErr := coinbaseTx.Serialize(&coinbaseBytesBuf)

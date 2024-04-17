@@ -37,7 +37,7 @@ func main() {
 		}
 		transactions = append(transactions, transaction)
 	}
-
+	var allTxs []*wire.MsgTx
 	// getValidTxOfCertainTypes(transactions, "p2pkh")
 	validTxIds := make([]string, 0)
 	validRawTxs := make([]string, 0)
@@ -63,6 +63,8 @@ func main() {
 			if len(tx.Vin) == 1 {
 				if tx.Vin[0].Prevout.ScriptPubKeyType == "p2pkh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wpkh" {
 					res := handlers.FullTxValidation(tx)
+					serializedAllTx, _, _ := handlers.SerializeATx(tx)
+					allTxs = append(allTxs, serializedAllTx)
 					if res {
 						serializedTx, serializedTxWithWitness, serializedTxBytes := handlers.SerializeATx(tx)
 						serializedTxHex := hex.EncodeToString(serializedTxBytes)
@@ -87,7 +89,7 @@ func main() {
 	// fmt.Println("length of valid TxIds, ", len(validTxIds))
 	// handlers.CreateMerkleTree(validTxIds)
 	// handlers.SerializedBlockTxs(validRawTxs)
-
+	fmt.Println("total txs: ", len(allTxs), "validtxs: ", len(validTxs))
 	// handlers.CreateBlockHeader()
 	coinbaseComScript := handlers.CreateCoinbaseCommittmentScript(validTxsWithWitness)
 	modCoinbaseTx := handlers.CreateAndModCoinbaseTxWithSecondOutput(coinbaseComScript)

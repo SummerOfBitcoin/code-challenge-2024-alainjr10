@@ -60,7 +60,7 @@ func ValidateTxHashes(transaction types.TransactionData) bool {
 			}
 
 		} else if transaction.Vin[i].Prevout.ScriptPubKeyType == "p2pkh" {
-			fmt.Println("\n IS P2PKH ")
+			// fmt.Println("\n IS P2PKH ")
 			splitScriptSigAsm := strings.Split(input.ScriptSigAsm, " ")
 			sigBytes, _ := hex.DecodeString(splitScriptSigAsm[1])
 			pubKeyBytes, _ := hex.DecodeString(splitScriptSigAsm[3]) // in this case, we are extracting the redeemscript
