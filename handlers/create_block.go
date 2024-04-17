@@ -240,7 +240,10 @@ func VerifyBlock(txs []*wire.MsgTx, updatedCoinbaseTx *wire.MsgTx) {
 		serializedBlockHeader := SerializeWireBlockHeader(blockHeader)
 		txIdsInBlock := make([]string, 0)
 		for _, tx := range block.Transactions {
-			txIdsInBlock = append(txIdsInBlock, tx.TxHash().String())
+			txIdHash := tx.TxHash()
+			newTxIdStr := hex.EncodeToString(txIdHash.CloneBytes())
+			// newTxId,_ := chainhash.NewHashFromStr(newTxIdStr)
+			txIdsInBlock = append(txIdsInBlock, newTxIdStr)
 		}
 
 		compactHash := HexToCompactHex(hashInt)
