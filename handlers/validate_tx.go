@@ -5,7 +5,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/SummerOfBitcoin/code-challenge-2024-alainjr10/types"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -20,9 +22,46 @@ import (
 )
 
 func FullTxValidation(transaction types.TransactionData) bool {
-	validateHashes := ValidateTxHashes(transaction)
-	verifyTxSig := VerifyTxSig(transaction)
-	return validateHashes && verifyTxSig
+	timeLockValid := ValidateTxTimeLock(transaction)
+	var validateHashes bool
+	var verifyTxSig bool
+	if timeLockValid {
+		validateHashes = ValidateTxHashes(transaction)
+		verifyTxSig = VerifyTxSig(transaction)
+	}
+
+	return validateHashes && verifyTxSig && timeLockValid
+}
+
+func ValidateTxTimeLock(transaction types.TransactionData) bool {
+	// assume relative time locks as valid tx, also absolute timelocs based on block height should be valid too
+	// if the locktime is less than 500000000, then it's a block height locktime and should be valid
+	txTimeIsValid := false
+	relativeTimeLockSequenceMaxVal, strconvErr := strconv.ParseInt("0xefffffff", 0, 64)
+	if strconvErr != nil {
+		fmt.Println("Error converting hex to int: ", strconvErr)
+		return false
+	}
+	timeNow := time.Now().Unix()
+	if transaction.Locktime > int(timeNow) {
+		txTimeIsValid = false
+	} else if transaction.Locktime < 500000000 {
+		txTimeIsValid = true
+	} else {
+		for _, vins := range transaction.Vin {
+			hexSequence := fmt.Sprintf("%x", vins.Sequence)
+			if hexSequence == "ffffffff" {
+				txTimeIsValid = true
+			} else if vins.Sequence <= int(relativeTimeLockSequenceMaxVal) {
+				txTimeIsValid = true
+			} else {
+				txTimeIsValid = false
+				break
+			}
+		}
+	}
+
+	return txTimeIsValid
 }
 
 func ValidateTxHashes(transaction types.TransactionData) bool {
@@ -35,7 +74,7 @@ func ValidateTxHashes(transaction types.TransactionData) bool {
 		stack := new(types.Stack)
 		if transaction.Vin[i].Prevout.ScriptPubKeyType == "v0_p2wpkh" {
 			sigBytes, _ := hex.DecodeString(input.ScriptSig)
-			pubKeyBytes, _ := hex.DecodeString(input.Witness[1])
+			pubKeyBytes, _ := hex.DecodeString(input.Witness[1]) // in this case, we are extracting the redeemscript
 			stack.Push(sigBytes)
 			stack.Push(pubKeyBytes)
 			hashPubKey := btcutil.Hash160(pubKeyBytes)
@@ -116,35 +155,32 @@ func ValidateTxHashes(transaction types.TransactionData) bool {
 			}
 		} else if transaction.Vin[i].Prevout.ScriptPubKeyType == "v0_p2wsh" {
 			// TODO Come to this later
-			continue
 
-			// fmt.Println("\n IS P2WSH ")
-			// sigBytes, _ := hex.DecodeString(input.ScriptSig)
-			// splitScriptSigAsm := strings.Split(input.ScriptSigAsm, " ")
-			// pubKeyBytes, _ := hex.DecodeString(splitScriptSigAsm[1]) // in this case, we are extracting the redeemscript
-			// stack.Push([]byte{0x00})
-			// stack.Push(sigBytes)
-			// // stack.Push(pubKeyBytes)
-			// hashPubKey := btcutil.Hash160(pubKeyBytes)
-			// stack.Push(hashPubKey)
-			// scriptPubKeyAsm := strings.Split(input.Prevout.ScriptPubKeyAsm, " ")
-			// if len(scriptPubKeyAsm) >= 3 {
-			// 	// here we extract hashed pubkey from scriptpubkey and add it to the stack
-			// 	hashedKey, _ := hex.DecodeString(scriptPubKeyAsm[2])
-			// 	stack.Push(hashedKey)
-			// }
-			// providedPubKeyHash, _ := stack.Pop()
-			// hashedPubKey, _ := stack.Pop()
-			// if bytes.Equal(providedPubKeyHash, hashedPubKey) {
-			// 	// fmt.Println("Valid input")
-			// 	stack.Push([]byte{0x01})
-			// 	overallStack.Push([]byte{0x01})
-			// } else {
-			// 	// fmt.Println("Invalid input")
-			// 	stack.Push([]byte{0x00})
-			// 	overallStack.Push([]byte{0x00})
-			// 	break
-			// }
+			sigBytes, _ := hex.DecodeString(input.ScriptSig)
+			pubKeyBytes, _ := hex.DecodeString(input.Witness[len(input.Witness)-1]) // in this case, we are extracting the redeemscript
+			stack.Push(sigBytes)
+			stack.Push(pubKeyBytes)
+			hashPubKey := chainhash.HashB(pubKeyBytes)
+			stack.Push(hashPubKey)
+			scriptPubKeyAsm := strings.Split(input.Prevout.ScriptPubKeyAsm, " ")
+			if len(scriptPubKeyAsm) >= 3 {
+				// here we extract hashed pubkey from scriptpubkey and add it to the stack
+				hashedKey, _ := hex.DecodeString(scriptPubKeyAsm[2])
+				stack.Push(hashedKey)
+			}
+			providedPubKeyHash, _ := stack.Pop()
+			hashedPubKey, _ := stack.Pop()
+			// fmt.Println("hashed val: ", hex.EncodeToString(hashedPubKey))
+			if bytes.Equal(providedPubKeyHash, hashedPubKey) {
+				// fmt.Println("Valid input")
+				stack.Push([]byte{0x01})
+				overallStack.Push([]byte{0x01})
+			} else {
+				// fmt.Println("Invalid input")
+				stack.Push([]byte{0x00})
+				overallStack.Push([]byte{0x00})
+				break
+			}
 		} else {
 			overallStack.Push([]byte{0x01})
 			fmt.Println("Not handled")
@@ -184,7 +220,7 @@ func SerializeATx(transaction types.TransactionData) (*wire.MsgTx, *wire.MsgTx, 
 		scriptSig, _ := hex.DecodeString(input.ScriptSig)
 		var witness [][]byte
 		// if transaction.Vin[i].Witness != nil && len(transaction.Vin[i].Witness) > 0 {
-		if transaction.Vin[i].Prevout.ScriptPubKeyType == "v0_p2wpkh" {
+		if transaction.Vin[i].Prevout.ScriptPubKeyType == "v0_p2wpkh" || transaction.Vin[i].Prevout.ScriptPubKeyType == "v0_p2wsh" || transaction.Vin[i].Prevout.ScriptPubKeyType == "v1_p2tr" {
 
 			witness = make([][]byte, len(input.Witness))
 			for i, w := range input.Witness {
@@ -242,7 +278,7 @@ func SerializeATxWOSigScript(transaction types.TransactionData) []byte {
 		if transaction.Vin[i].Prevout.ScriptPubKeyType == "p2sh" {
 			// fmt.Println("IS P2SH from SerializeATxWOSigScript")
 			// replaceWith, _ := hex.DecodeString("00ad905988127d78c35838f9bef57b90a612bd43c0")
-			txIn = wire.NewTxIn(prevOut, []byte{}, nil)
+			txIn = wire.NewTxIn(prevOut, nil, nil)
 		} else if transaction.Vin[i].Prevout.ScriptPubKeyType == "p2pkh" {
 			// fmt.Println("\n IS P2PKH from SerializeATxWOSigScript")
 			txIn = wire.NewTxIn(prevOut, scripPubKey, nil)
@@ -256,6 +292,8 @@ func SerializeATxWOSigScript(transaction types.TransactionData) []byte {
 			// 	// []byte(input.Witness[0]),
 			// 	// []byte(input.Witness[1]),
 			// }
+			txIn = wire.NewTxIn(prevOut, nil, nil)
+		} else if transaction.Vin[i].Prevout.ScriptPubKeyType == "v0_p2wsh" {
 			txIn = wire.NewTxIn(prevOut, nil, nil)
 		}
 
@@ -389,7 +427,16 @@ func SerializeATxWOSigScript(transaction types.TransactionData) []byte {
 		serializedInputToSign := serializedInput
 		scriptPubKeyAsm := strings.Split(transaction.Vin[0].Prevout.ScriptPubKeyAsm, " ")
 		pubkeyHashStr := scriptPubKeyAsm[2]
-		scriptCode := "1976a914" + pubkeyHashStr + "88ac"
+		var scriptCode string
+		if input.Prevout.ScriptPubKeyType == "v0_p2wpkh" {
+			scriptCode = "1976a914" + pubkeyHashStr + "88ac"
+		} else if input.Prevout.ScriptPubKeyType == "v0_p2wsh" {
+			witnessScript := input.Witness[len(input.Witness)-1]
+			witnessScriptByteLength := len(witnessScript) / 2
+			witnessScriptByteLengthHex := fmt.Sprintf("%02x", witnessScriptByteLength)
+			scriptCode = witnessScriptByteLengthHex + witnessScript
+		}
+
 		amt := input.Prevout.Value
 		amtP := fmt.Sprintf("%016x", amt)
 		hexEncodedAmt := ReverseBytesFromHexStr(amtP)
@@ -441,6 +488,8 @@ func VerifyTxSig(transaction types.TransactionData) bool {
 	// fmt.Println("Raw tx bytes:", hextx)
 	var sig []byte
 	var pubKeyBytes []byte
+	// pubKeysStack := new(types.Stack)
+	multiSigRedeemStack := new(types.Stack)
 	if transaction.Vin[0].Prevout.ScriptPubKeyType == "p2pkh" {
 		scriptSigAsm := strings.Split(transaction.Vin[0].ScriptSigAsm, " ")
 		sig, _ = hex.DecodeString(scriptSigAsm[1])
@@ -452,8 +501,85 @@ func VerifyTxSig(transaction types.TransactionData) bool {
 		sig, _ = hex.DecodeString(transaction.Vin[0].Witness[0])
 		pubKeyBytes, _ = hex.DecodeString(transaction.Vin[0].Witness[1])
 	} else if transaction.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wsh" {
-		// TODO Come to this later
-		return false
+		// TODO check if the witness first field is empty. if not. more complex script don't validate
+		// fmt.Println("Currently verifying tx: ", transaction.TxFilename)
+		witnesses := transaction.Vin[0].Witness
+		if witnesses[0] != "" {
+			return false
+		}
+		if witnesses[0] == "" {
+			// fmt.Println("Empty witness")
+			emptyStringByte, _ := hex.DecodeString("00")
+			multiSigRedeemStack.Push(emptyStringByte)
+		} else {
+			// fmt.Println("Not empty witness")
+			emptyStringByte, _ := hex.DecodeString(witnesses[0])
+			multiSigRedeemStack.Push(emptyStringByte)
+		}
+		for i := 1; i < len(witnesses)-1; i++ { // len(witnesses)-1 be3cause we don't want to include last item (witness script)
+			witnessBytes, _ := hex.DecodeString(witnesses[i])
+			multiSigRedeemStack.Push(witnessBytes)
+		}
+		witnessScriptAsm := strings.Split(transaction.Vin[0].InnerWitnessScript, " ")
+		for _, witness := range witnessScriptAsm {
+			// var scriptOpCodeVal int
+			if strings.Contains(witness, "PUSHBYTES") || strings.Contains(witness, "OP_CHECK") {
+				continue
+			} else if strings.Contains(witness, "PUSHNUM_") {
+				opCodeSplit := strings.Split(witness, "_")
+				scriptOpCodeVal := fmt.Sprintf("%02s", opCodeSplit[len(opCodeSplit)-1])
+				opCodeVal, _ := hex.DecodeString(scriptOpCodeVal)
+				// fmt.Println("pusshing opcode: ", hex.EncodeToString(opCodeVal))
+				multiSigRedeemStack.Push(opCodeVal)
+			} else {
+				opCodeVal, _ := hex.DecodeString(witness)
+				multiSigRedeemStack.Push(opCodeVal)
+			}
+			// witnessBytes, _ := hex.DecodeString(witness)
+			// multiSigRedeemStack.Push(witnessBytes)
+		}
+		// NOW CHECK SIGNATURES
+		var pubkeys []string
+		var sigs []string
+		numOfPupKeys, _ := multiSigRedeemStack.Pop()
+		numOfPupKeysInt, _ := strconv.Atoi(hex.EncodeToString(numOfPupKeys))
+		for i := 0; i < numOfPupKeysInt; i++ {
+			pubKey, _ := multiSigRedeemStack.Pop()
+			pubkeyStr := hex.EncodeToString(pubKey)
+			pubkeys = append([]string{pubkeyStr}, pubkeys...)
+		}
+		numOfSigs, _ := multiSigRedeemStack.Pop()
+		numOfSigsInt, _ := strconv.Atoi(hex.EncodeToString(numOfSigs))
+		for i := 0; i < numOfSigsInt; i++ {
+			sig, _ := multiSigRedeemStack.Pop()
+			sigStr := hex.EncodeToString(sig)
+			sigs = append([]string{sigStr}, sigs...)
+		}
+		// fmt.Println("Pubkeys: ", pubkeys, "Sigs: ", sigs)
+		var checkMultiSigValid []bool
+		for _, sig := range sigs {
+			sigBytes, _ := hex.DecodeString(sig)
+			signature, parseScriptErr := ecdsa.ParseDERSignature(sigBytes)
+			if parseScriptErr != nil {
+				fmt.Println("Error parsing signature:", parseScriptErr)
+			}
+			for _, pubkey := range pubkeys {
+				pubKeyBytes, _ := hex.DecodeString(pubkey)
+				pubKey, _ := btcec.ParsePubKey(pubKeyBytes)
+				verified := signature.Verify(rawTxBytes, pubKey)
+				if verified {
+					// fmt.Println("Signature verified")
+					checkMultiSigValid = append(checkMultiSigValid, true)
+					break
+				}
+			}
+		}
+		if len(checkMultiSigValid) != numOfSigsInt {
+			return false
+		} else {
+			return true
+		}
+		// return true
 
 	}
 	// Parse the DER encoded signature

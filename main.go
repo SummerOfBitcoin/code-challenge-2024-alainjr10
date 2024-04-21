@@ -48,6 +48,17 @@ func main() {
 	validTxIds = append(validTxIds, coinbaseTxId.String())
 	validRawTxs = append(validRawTxs, coinbaseTxHex)
 	for _, tx := range transactions {
+		// hasSameVins := true
+		// for _, vin := range tx.Vin {
+		// 	firstVin := tx.Vin[0]
+		// 	if vin.Prevout.ScriptPubKeyType != firstVin.Prevout.ScriptPubKeyType {
+		// 		hasSameVins = false
+		// 		break
+		// 	}
+		// }
+		// if !hasSameVins {
+		// 	fmt.Println("tx wit multiple vin: ", tx.TxFilename)
+		// }
 		// handlers.ValidateTxHashes(tx)
 		// 5d8839c29051c0a892730be6c4f6be086904b0a6d537097df1fc92bb8d30a5ad
 		// 0a8b21af1cfcc26774df1f513a72cd362a14f5a598ec39d915323078efb5a240 p2pkh
@@ -61,7 +72,10 @@ func main() {
 		// }
 		// if len(validTxIds) < 5 {
 		if len(tx.Vin) == 1 {
-			if tx.Vin[0].Prevout.ScriptPubKeyType == "p2pkh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wpkh" {
+			// if tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wsh" {
+			// 	fmt.Println("PSWSH: ", tx.TxFilename)
+			// }
+			if tx.Vin[0].Prevout.ScriptPubKeyType == "p2pkh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wpkh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wsh" {
 				res := handlers.FullTxValidation(tx)
 				serializedAllTx, _, _ := handlers.SerializeATx(tx)
 				allTxs = append(allTxs, serializedAllTx)

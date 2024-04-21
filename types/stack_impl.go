@@ -31,3 +31,7 @@ func (s *Stack) Pop() ([]byte, error) {
 func (s *Stack) IsEmpty() bool {
 	return len(*s) == 0
 }
+
+func (s *Stack) StackLen() int {
+	return len(*s)
+}
