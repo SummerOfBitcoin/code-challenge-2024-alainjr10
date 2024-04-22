@@ -75,7 +75,7 @@ func main() {
 			// if tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wsh" {
 			// 	fmt.Println("PSWSH: ", tx.TxFilename)
 			// }
-			if tx.Vin[0].Prevout.ScriptPubKeyType == "p2pkh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wpkh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wsh" {
+			if tx.Vin[0].Prevout.ScriptPubKeyType == "p2pkh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wpkh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wsh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v1_p2tr" {
 				res := handlers.FullTxValidation(tx)
 				serializedAllTx, _, _ := handlers.SerializeATx(tx)
 				allTxs = append(allTxs, serializedAllTx)

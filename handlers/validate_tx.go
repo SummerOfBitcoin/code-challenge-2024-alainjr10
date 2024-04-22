@@ -181,6 +181,8 @@ func ValidateTxHashes(transaction types.TransactionData) bool {
 				overallStack.Push([]byte{0x00})
 				break
 			}
+		} else if transaction.Vin[i].Prevout.ScriptPubKeyType == "v1_p2tr" {
+			return true
 		} else {
 			overallStack.Push([]byte{0x01})
 			fmt.Println("Not handled")
@@ -294,6 +296,8 @@ func SerializeATxWOSigScript(transaction types.TransactionData) []byte {
 			// }
 			txIn = wire.NewTxIn(prevOut, nil, nil)
 		} else if transaction.Vin[i].Prevout.ScriptPubKeyType == "v0_p2wsh" {
+			txIn = wire.NewTxIn(prevOut, nil, nil)
+		} else if transaction.Vin[i].Prevout.ScriptPubKeyType == "v1_p2tr" {
 			txIn = wire.NewTxIn(prevOut, nil, nil)
 		}
 
@@ -494,6 +498,8 @@ func VerifyTxSig(transaction types.TransactionData) bool {
 		scriptSigAsm := strings.Split(transaction.Vin[0].ScriptSigAsm, " ")
 		sig, _ = hex.DecodeString(scriptSigAsm[1])
 		pubKeyBytes, _ = hex.DecodeString(scriptSigAsm[3])
+	} else if transaction.Vin[0].Prevout.ScriptPubKeyType == "v1_p2tr" {
+		return true
 	} else if transaction.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wpkh" {
 		sig, _ = hex.DecodeString(transaction.Vin[0].Witness[0])
 		pubKeyBytes, _ = hex.DecodeString(transaction.Vin[0].Witness[1])
