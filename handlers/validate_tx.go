@@ -206,7 +206,7 @@ func ValidateTxHashes(transaction types.TransactionData) bool {
 	return txIsVerified
 }
 
-func SerializeATx(transaction types.TransactionData) (*wire.MsgTx, *wire.MsgTx, []byte) {
+func SerializeATx(transaction types.TransactionData) (*wire.MsgTx, *wire.MsgTx, []byte, []byte) {
 	numberOfInputs := len(transaction.Vin)
 	numberOfOutputs := len(transaction.Vout)
 	tx := wire.NewMsgTx(int32(transaction.Version))
@@ -259,10 +259,13 @@ func SerializeATx(transaction types.TransactionData) (*wire.MsgTx, *wire.MsgTx, 
 	serializeErr := tx.Serialize(&txBuffer)
 	if serializeErr != nil {
 		fmt.Println("Error serializing transaction:", serializeErr)
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
+	var txBuf1 bytes.Buffer
+	wTx.Serialize(&txBuf1)
+	// fmt.Println("Tx: ", hex.EncodeToString(txBuffer.Bytes()), "Wtx: ", hex.EncodeToString(txBuf1.Bytes()))
 	rawTxBytes := txBuffer.Bytes()
-	return tx, wTx, rawTxBytes
+	return tx, wTx, rawTxBytes, txBuf1.Bytes()
 }
 
 func SerializeATxWOSigScript(transaction types.TransactionData) []byte {

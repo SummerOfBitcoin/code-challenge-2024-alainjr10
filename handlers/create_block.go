@@ -200,7 +200,7 @@ func GetHashFromStr(s string) *chainhash.Hash {
 	return hash
 }
 
-func VerifyBlock(txs []*wire.MsgTx, updatedCoinbaseTx *wire.MsgTx) {
+func VerifyBlock(txs []*wire.MsgTx, updatedCoinbaseTx *wire.MsgTx, totalTxSizeWitWitnesses int) {
 	block := ParseBlock(txs, updatedCoinbaseTx)
 	blockMined := false
 	nonceElapsed := false
@@ -217,16 +217,16 @@ func VerifyBlock(txs []*wire.MsgTx, updatedCoinbaseTx *wire.MsgTx) {
 	// commitmentOutput := wire.NewTxOut(0, commitmentScript)
 	// coinbaseTx.AddTxOut(commitmentOutput)
 	txIdsInBlock := make([]string, 0)
-	blockBaseSize := block.SerializeSizeStripped()
-	blockTotalSize := block.SerializeSize()
-	blockWeight := blockBaseSize*3 + blockTotalSize
+	txTotalSize := 0
 	for _, tx := range block.Transactions {
 		txIdHash := tx.TxHash()
+		txTotalSize += tx.SerializeSize()
 		// newTxIdStr := hex.EncodeToString(txIdHash.CloneBytes())
 		// newTxId, _ := chainhash.NewHashFromStr(newTxIdStr)
 		txIdsInBlock = append(txIdsInBlock, txIdHash.String())
 	}
-	fmt.Println("Block Base Size: ", blockBaseSize, "Block Total Size: ", blockTotalSize, "Full block weight: ", blockWeight)
+	blockWeightUnits := 320 + (txTotalSize * 3) + totalTxSizeWitWitnesses
+	fmt.Println("total tx size w/0 wit:", txTotalSize, "totoal tx size w wit: ", totalTxSizeWitWitnesses, "Full block weight units: ", blockWeightUnits)
 	for !blockMined {
 		var blockHeader *wire.BlockHeader
 		if nonceElapsed {

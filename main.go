@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -13,10 +14,7 @@ import (
 )
 
 func main() {
-	fmt.Println("Hello from golang module")
-
 	var transactions []types.TransactionData
-
 	// Read all transactions from the mempool
 	// For each transaction, unmarshal it and add to the Transaction data slice
 	fileDir, err := os.ReadDir("mempool")
@@ -47,6 +45,10 @@ func main() {
 	coinbaseTxId := chainhash.DoubleHashH(coinbaseTxBytes)
 	validTxIds = append(validTxIds, coinbaseTxId.String())
 	validRawTxs = append(validRawTxs, coinbaseTxHex)
+	txTotalSize := 0 // get the size of searialized txs (with witness and flags)
+	txTotalBaseSize := 0
+	totalBlockWeight := 320 + 800*2 // 320 is the size of the block header and 600 is the  approx size of the coinbase tx
+	// with margin of error. we do 800*2 because... coinbase tx weight for nonsegwit and for segwit serialzing the tx with witness
 	for _, tx := range transactions {
 		// hasSameVins := true
 		// for _, vin := range tx.Vin {
@@ -71,18 +73,29 @@ func main() {
 		// 	fmt.Println("Result: ", res)
 		// }
 		// if len(validTxIds) < 5 {
+		// if totalBlockWeight > 3999999 {
+		// 	break
+		// }
 		if len(tx.Vin) == 1 {
 			// if tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wsh" {
 			// 	fmt.Println("PSWSH: ", tx.TxFilename)
 			// }
-			if tx.Vin[0].Prevout.ScriptPubKeyType == "p2pkh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wpkh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wsh" {
+			if tx.Vin[0].Prevout.ScriptPubKeyType == "p2pkh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wpkh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wsh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v1_p2tr" {
 				res := handlers.FullTxValidation(tx)
-				serializedAllTx, _, _ := handlers.SerializeATx(tx)
+				serializedAllTx, _, _, _ := handlers.SerializeATx(tx)
 				allTxs = append(allTxs, serializedAllTx)
 				if res {
-					serializedTx, serializedTxWithWitness, serializedTxBytes := handlers.SerializeATx(tx)
+					serializedTx, serializedTxWithWitness, serializedTxBytes, serializedWitnessTxBytes := handlers.SerializeATx(tx)
+					txBaseSize := len(serializedTxBytes)
+					txSizeWWit := len(serializedWitnessTxBytes)
+					txTotalBaseSize += txBaseSize
+					txTotalSize += txSizeWWit
 					serializedTxHex := hex.EncodeToString(serializedTxBytes)
 					serializedTxId := chainhash.DoubleHashH(serializedTxBytes)
+					totalBlockWeight += txBaseSize*3 + txSizeWWit
+					if totalBlockWeight > 3999999 {
+						break
+					}
 					validTxIds = append(validTxIds, serializedTxId.String())
 					validRawTxs = append(validRawTxs, serializedTxHex)
 					validTxs = append(validTxs, serializedTx)
@@ -103,10 +116,14 @@ func main() {
 	// fmt.Println("length of valid TxIds, ", len(validTxIds))
 	// handlers.CreateMerkleTree(validTxIds)
 	// handlers.SerializedBlockTxs(validRawTxs)
-	fmt.Println("total txs: ", len(allTxs), "validtxs: ", len(validTxs))
 	// handlers.CreateBlockHeader()
 	coinbaseComScript := handlers.CreateCoinbaseCommittmentScript(validTxsWithWitness)
 	modCoinbaseTx := handlers.CreateAndModCoinbaseTxWithSecondOutput(coinbaseComScript)
-	handlers.VerifyBlock(validTxs, modCoinbaseTx)
+	var coinbaseTxBytesBuf bytes.Buffer
+	modCoinbaseTx.Serialize(&coinbaseTxBytesBuf)
+	txTotalSize += len(coinbaseTxBytesBuf.Bytes())
+	txTotalBaseSize += len(coinbaseTxBytesBuf.Bytes())
+	fmt.Println("total txs: ", len(allTxs), "validtxs: ", len(validTxs), "block weight unit: ", totalBlockWeight)
+	handlers.VerifyBlock(validTxs, modCoinbaseTx, txTotalSize)
 
 }
