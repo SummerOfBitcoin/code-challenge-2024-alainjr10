@@ -2,14 +2,13 @@ package main
 
 import (
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/SummerOfBitcoin/code-challenge-2024-alainjr10/handlers"
 	"github.com/SummerOfBitcoin/code-challenge-2024-alainjr10/types"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 )
 
@@ -35,16 +34,46 @@ func main() {
 		}
 		transactions = append(transactions, transaction)
 	}
+	sort.Slice(transactions, func(i, j int) bool {
+		inputAmountI := 0
+		outputAmountI := 0
+		for _, vin := range transactions[i].Vin {
+			inputAmountI += vin.Prevout.Value
+		}
+		for _, vout := range transactions[i].Vout {
+			outputAmountI += vout.Value
+		}
+		inputAmountJ := 0
+		outputAmountJ := 0
+		for _, vin := range transactions[j].Vin {
+			inputAmountJ += vin.Prevout.Value
+		}
+		for _, vout := range transactions[j].Vout {
+			outputAmountJ += vout.Value
+		}
+		_, _, txIWOWit, txIWithWith := handlers.SerializeATx(transactions[i])
+		_, _, txJWOWit, txJWithWith := handlers.SerializeATx(transactions[j])
+		txIBaseSize, txITotSize := len(txIWOWit), len(txIWithWith)
+		txJBaseSize, txJTotSize := len(txJWOWit), len(txJWithWith)
+		txIWeight := txIBaseSize*3 + txITotSize
+		txJWeight := txJBaseSize*3 + txJTotSize
+		feeI := inputAmountI - outputAmountI
+		feeJ := inputAmountJ - outputAmountJ
+		ratioI := float64(feeI) / float64(txIWeight)
+		ratioJ := float64(feeJ) / float64(txJWeight)
+		return ratioI > ratioJ
+	})
+	fmt.Println("first tx: ", transactions[11].TxFilename, "last tx: ", transactions[len(transactions)-1].TxFilename)
 	var allTxs []*wire.MsgTx
 	// getValidTxOfCertainTypes(transactions, "p2pkh")
-	validTxIds := make([]string, 0)
-	validRawTxs := make([]string, 0)
+	// validTxIds := make([]string, 0)
+	// validRawTxs := make([]string, 0)
 	var validTxs []*wire.MsgTx
 	var validTxsWithWitness []*wire.MsgTx
-	coinbaseTxBytes, coinbaseTxHex := handlers.PrintCoinbaseTx()
-	coinbaseTxId := chainhash.DoubleHashH(coinbaseTxBytes)
-	validTxIds = append(validTxIds, coinbaseTxId.String())
-	validRawTxs = append(validRawTxs, coinbaseTxHex)
+	// coinbaseTxBytes, coinbaseTxHex := handlers.PrintCoinbaseTx()
+	// coinbaseTxId := chainhash.DoubleHashH(coinbaseTxBytes)
+	// validTxIds = append(validTxIds, coinbaseTxId.String())
+	// validRawTxs = append(validRawTxs, coinbaseTxHex)
 	txTotalSize := 0 // get the size of searialized txs (with witness and flags)
 	txTotalBaseSize := 0
 	totalBlockWeight := 320 + 800*2 // 320 is the size of the block header and 600 is the  approx size of the coinbase tx
@@ -90,14 +119,14 @@ func main() {
 					txSizeWWit := len(serializedWitnessTxBytes)
 					txTotalBaseSize += txBaseSize
 					txTotalSize += txSizeWWit
-					serializedTxHex := hex.EncodeToString(serializedTxBytes)
-					serializedTxId := chainhash.DoubleHashH(serializedTxBytes)
+					// serializedTxHex := hex.EncodeToString(serializedTxBytes)
+					// serializedTxId := chainhash.DoubleHashH(serializedTxBytes)
 					totalBlockWeight += txBaseSize*3 + txSizeWWit
 					if totalBlockWeight > 3999999 {
 						break
 					}
-					validTxIds = append(validTxIds, serializedTxId.String())
-					validRawTxs = append(validRawTxs, serializedTxHex)
+					// validTxIds = append(validTxIds, serializedTxId.String())
+					// validRawTxs = append(validRawTxs, serializedTxHex)
 					validTxs = append(validTxs, serializedTx)
 					validTxsWithWitness = append(validTxsWithWitness, serializedTxWithWitness)
 				}
