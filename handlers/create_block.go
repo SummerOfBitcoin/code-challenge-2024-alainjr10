@@ -217,13 +217,16 @@ func VerifyBlock(txs []*wire.MsgTx, updatedCoinbaseTx *wire.MsgTx) {
 	// commitmentOutput := wire.NewTxOut(0, commitmentScript)
 	// coinbaseTx.AddTxOut(commitmentOutput)
 	txIdsInBlock := make([]string, 0)
+	blockBaseSize := block.SerializeSizeStripped()
+	blockTotalSize := block.SerializeSize()
+	blockWeight := blockBaseSize*3 + blockTotalSize
 	for _, tx := range block.Transactions {
 		txIdHash := tx.TxHash()
 		// newTxIdStr := hex.EncodeToString(txIdHash.CloneBytes())
 		// newTxId, _ := chainhash.NewHashFromStr(newTxIdStr)
 		txIdsInBlock = append(txIdsInBlock, txIdHash.String())
 	}
-
+	fmt.Println("Block Base Size: ", blockBaseSize, "Block Total Size: ", blockTotalSize, "Full block weight: ", blockWeight)
 	for !blockMined {
 		var blockHeader *wire.BlockHeader
 		if nonceElapsed {
