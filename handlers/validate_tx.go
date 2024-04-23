@@ -284,65 +284,73 @@ func SerializeATx(transaction types.TransactionData) (*wire.MsgTx, *wire.MsgTx, 
 func SerializeATxWOSigScript(transaction types.TransactionData, inputIndex int) []byte {
 	numberOfInputs := len(transaction.Vin)
 	numberOfOutputs := len(transaction.Vout)
-	// var tx *wire.MsgTx
+	tx := wire.NewMsgTx(int32(transaction.Version))
 
 	// Add the inputs
-	if transaction.Vin[0].Prevout.ScriptPubKey == "p2pkh" || (transaction.Vin[0].Prevout.ScriptPubKey == "p2sh" && transaction.Vin[0].Witness == nil) {
-		tx := wire.NewMsgTx(int32(transaction.Version))
-		for i := 0; i < numberOfInputs; i++ {
-			var txIn *wire.TxIn
-			input := transaction.Vin[i]
-			prevOutHash, _ := chainhash.NewHashFromStr(input.TxID)
-			prevOut := wire.NewOutPoint(prevOutHash, uint32(input.Vout))
+	for i := 0; i < numberOfInputs; i++ {
+		var txIn *wire.TxIn
+		input := transaction.Vin[i]
+		prevOutHash, _ := chainhash.NewHashFromStr(input.TxID)
+		prevOut := wire.NewOutPoint(prevOutHash, uint32(input.Vout))
+		scripPubKey, _ := hex.DecodeString(input.Prevout.ScriptPubKey)
+		if transaction.Vin[i].Prevout.ScriptPubKeyType == "p2sh" {
 			txIn = wire.NewTxIn(prevOut, nil, nil)
-			txIn.Sequence = uint32(input.Sequence)
-			tx.AddTxIn(txIn)
+		} else if transaction.Vin[i].Prevout.ScriptPubKeyType == "p2pkh" {
+			txIn = wire.NewTxIn(prevOut, scripPubKey, nil)
+		} else if transaction.Vin[i].Prevout.ScriptPubKeyType == "v0_p2wpkh" {
+			txIn = wire.NewTxIn(prevOut, nil, nil)
+		} else if transaction.Vin[i].Prevout.ScriptPubKeyType == "v0_p2wsh" {
+			txIn = wire.NewTxIn(prevOut, nil, nil)
+		} else if transaction.Vin[i].Prevout.ScriptPubKeyType == "v1_p2tr" {
+			txIn = wire.NewTxIn(prevOut, nil, nil)
 		}
 
-		// Add the outputs
-		for i := 0; i < numberOfOutputs; i++ {
-			output := transaction.Vout[i]
-			scriptPubKey, _ := hex.DecodeString(output.ScriptPubKey)
-			txOut := wire.NewTxOut(int64(output.Value), scriptPubKey)
-			tx.AddTxOut(txOut)
+		txIn.Sequence = uint32(input.Sequence)
+		tx.AddTxIn(txIn)
+	}
+
+	// Add the outputs
+	for i := 0; i < numberOfOutputs; i++ {
+		output := transaction.Vout[i]
+		scriptPubKey, _ := hex.DecodeString(output.ScriptPubKey)
+		txOut := wire.NewTxOut(int64(output.Value), scriptPubKey)
+		tx.AddTxOut(txOut)
+	}
+
+	tx.LockTime = uint32(transaction.Locktime)
+
+	var rawTxBytes []byte
+	if transaction.Vin[0].Prevout.ScriptPubKeyType == "p2pkh" { // this is just temporary and a more robust way of handling this should be implemented
+		input := transaction.Vin[0]
+		scripPubKey, _ := hex.DecodeString(input.Prevout.ScriptPubKey)
+		tx.TxIn[0].SignatureScript = scripPubKey
+		// Serialize
+		var txBuffer bytes.Buffer
+		serializeErr := tx.Serialize(&txBuffer)
+		if serializeErr != nil {
+			fmt.Println("Error serializing transaction:", serializeErr)
+			return nil
 		}
-
-		tx.LockTime = uint32(transaction.Locktime)
-
-		var rawTxBytes []byte
-		if transaction.Vin[0].Prevout.ScriptPubKeyType == "p2pkh" { // this is just temporary and a more robust way of handling this should be implemented
-
-			input := transaction.Vin[0]
-			scripPubKey, _ := hex.DecodeString(input.Prevout.ScriptPubKey)
-			tx.TxIn[0].SignatureScript = scripPubKey
-			// Serialize
-			var txBuffer bytes.Buffer
-			serializeErr := tx.Serialize(&txBuffer)
-			if serializeErr != nil {
-				fmt.Println("Error serializing transaction:", serializeErr)
-				return nil
-			}
-			rawTxBytes = txBuffer.Bytes()
-			rawTxHex := hex.EncodeToString(rawTxBytes)
-			rawTxHex = rawTxHex + "01000000"
-			txWithSighashBytes, _ := hex.DecodeString(rawTxHex)
-			hashedTx := chainhash.DoubleHashB(txWithSighashBytes)
-			return hashedTx
-		} else {
-			scriptSigAsmSplitted := strings.Split(transaction.Vin[0].ScriptSigAsm, " ")
-			redeemScriptBytes, _ := hex.DecodeString(scriptSigAsmSplitted[len(scriptSigAsmSplitted)-1])
-			tx.TxIn[0].SignatureScript = redeemScriptBytes
-			var txBuf bytes.Buffer
-			tx.Serialize(&txBuf)
-			rawTxBytes = txBuf.Bytes()
-			rawTxHex := hex.EncodeToString(rawTxBytes)
-			rawTxHex = rawTxHex + "01000000"
-			txWithSighashBytes, _ := hex.DecodeString(rawTxHex)
-			hashedTx := chainhash.DoubleHashB(txWithSighashBytes)
-			// fmt.Println("\nserialized: ", rawTxHex, "tx id: ", transaction.TxFilename)
-			return hashedTx
-			// }
-		}
+		rawTxBytes = txBuffer.Bytes()
+		rawTxHex := hex.EncodeToString(rawTxBytes)
+		rawTxHex = rawTxHex + "01000000"
+		txWithSighashBytes, _ := hex.DecodeString(rawTxHex)
+		hashedTx := chainhash.DoubleHashB(txWithSighashBytes)
+		return hashedTx
+	} else if transaction.Vin[0].Prevout.ScriptPubKeyType == "p2sh" && transaction.Vin[0].Witness == nil {
+		scriptSigAsmSplitted := strings.Split(transaction.Vin[0].ScriptSigAsm, " ")
+		redeemScriptBytes, _ := hex.DecodeString(scriptSigAsmSplitted[len(scriptSigAsmSplitted)-1])
+		tx.TxIn[0].SignatureScript = redeemScriptBytes
+		var txBuf bytes.Buffer
+		tx.Serialize(&txBuf)
+		rawTxBytes = txBuf.Bytes()
+		rawTxHex := hex.EncodeToString(rawTxBytes)
+		rawTxHex = rawTxHex + "01000000"
+		txWithSighashBytes, _ := hex.DecodeString(rawTxHex)
+		hashedTx := chainhash.DoubleHashB(txWithSighashBytes)
+		// fmt.Println("\nserialized: ", rawTxHex, "tx id: ", transaction.TxFilename)
+		return hashedTx
+		// }
 	} else {
 		input := transaction.Vin[0]
 		output := transaction.Vout
