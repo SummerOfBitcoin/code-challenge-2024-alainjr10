@@ -16,11 +16,6 @@ import (
 )
 
 func CreateBlockHeader(merkleRootHash *chainhash.Hash) *wire.BlockHeader {
-	// blockHeader := types.BlockHeader{
-	// 	Version: btcutil.ve,
-	// }
-	// for this example, i'm using block 828015 id as prev block id
-	// prevBlockHash := GetHashFromStr("00000000000000000000a9c619c4af8c09f10c11a8262bcde576450e45a126ca")
 	prevBlockHash := GetHashFromStr("00000000000000000000a9c619c4af8c09f10c11a8262bcde576450e45a126ca")
 	merkleRoot := merkleRootHash
 	target := "0000ffff00000000000000000000000000000000000000000000000000000000"
@@ -34,7 +29,6 @@ func CreateBlockHeader(merkleRootHash *chainhash.Hash) *wire.BlockHeader {
 		bits,          /* bits */
 		0,
 	)
-	// GetNonce(4294967295)
 	return wireBh
 }
 
@@ -58,13 +52,6 @@ func CreateAndModCoinbaseTxWithSecondOutput(commitmentScript []byte) *wire.MsgTx
 }
 
 func ParseBlock(txs []*wire.MsgTx, coinbaseTx *wire.MsgTx) *wire.MsgBlock {
-	// Create the block header
-	// Create the coinbase transaction and update it with second output
-	// coinbaseTx := CreateAndModCoinbaseTxWithSecondOutput(txs)
-	// commitmentScript := CreateCoinbaseCommittmentScript(txs)
-	// commitmentOutput := wire.NewTxOut(0, commitmentScript)
-	// coinbaseTx.AddTxOut(commitmentOutput)
-
 	merkleRoot, err := CreateMerkleTree(txs, false, coinbaseTx)
 	if err != nil {
 		fmt.Println("Error creating Merkle tree: ", err)
@@ -81,7 +68,6 @@ func ParseBlock(txs []*wire.MsgTx, coinbaseTx *wire.MsgTx) *wire.MsgBlock {
 
 	// Add the remaining transactions to the block
 	for _, tx := range txs {
-		// tx := GetTxFromID(txid)
 		block.AddTransaction(tx)
 	}
 	// Serialize the block
@@ -100,11 +86,8 @@ func CreateMerkleTree(txs []*wire.MsgTx, isWTxId bool, coinbaseTx *wire.MsgTx) (
 	var coinbaseBy bytes.Buffer
 	coinbaseTx.Serialize(&coinbaseBy)
 	coinbaseTxHash := coinbaseTx.TxHash()
-	// coinbaseTx2 := hex.EncodeToString(coinbaseTxHash.CloneBytes())
-	// newCoinbaseTxHash, _ := chainhash.NewHashFromStr(coinbaseTx2)
 	coinbaseWTxId := fmt.Sprintf("%016x", 0)
 	coinbaseWTxIdHash, _ := chainhash.NewHashFromStr(coinbaseWTxId)
-	// Calculate the merkle root of the block
 	var hashes []*chainhash.Hash
 	if isWTxId {
 		hashes = append(hashes, coinbaseWTxIdHash)
@@ -112,12 +95,8 @@ func CreateMerkleTree(txs []*wire.MsgTx, isWTxId bool, coinbaseTx *wire.MsgTx) (
 		hashes = append(hashes, &coinbaseTxHash)
 	}
 
-	// Convert txids to chainhash.Hash
 	for _, tx := range txs {
 		hash := tx.TxHash()
-		// let's reverse the order of the hash, so as to get the txid in natural byte order
-		// val2 := hex.EncodeToString(hash.CloneBytes())
-		// newHash, _ := chainhash.NewHashFromStr(val2)
 		hashes = append(hashes, &hash)
 	}
 
@@ -141,28 +120,16 @@ func CreateMerkleTree(txs []*wire.MsgTx, isWTxId bool, coinbaseTx *wire.MsgTx) (
 }
 
 func CreateWitnessMerkleTree(txs []*wire.MsgTx) (*chainhash.Hash, error) {
-	// commitmentScript := CreateCoinbaseCommittmentScript(txs)
-	// commitmentOutput := wire.NewTxOut(0, commitmentScript)
-	// coinbaseTx.AddTxOut(commitmentOutput)
 	coinbaseWTxId := "0000000000000000000000000000000000000000000000000000000000000000"
 	coinbaseWTxIdHash, _ := chainhash.NewHashFromStr(coinbaseWTxId)
-	// validTxs := make([]string, 0)
-	// validTxs = append(validTxs, coinbaseTx.TxHash().String())
-	// Calculate the merkle root of the block
 	var hashes []*chainhash.Hash
 	hashes = append(hashes, coinbaseWTxIdHash)
 
-	// Convert txids to chainhash.Hash
 	for _, tx := range txs {
 		var txBytes bytes.Buffer
 		tx.Serialize(&txBytes)
-		// fmt.Println("Tx: ", hex.EncodeToString(txBytes.Bytes()))
-		// hash2 := tx.TxHash() // this actuall gives the txid, excluding witness data and flags
 		hash := chainhash.DoubleHashB(txBytes.Bytes())
-		// fmt.Println("Tx Hash: ", hex.EncodeToString(hash))
-		// revWTxId := ReverseBytesFromBytes(hash)
 		hashRev, revHashErr := chainhash.NewHashFromStr(ReverseBytesFromHexStr(hex.EncodeToString(hash)))
-		// fmt.Println("Tx: ", hex.EncodeToString(txBytes.Bytes()), "\nHash: ", hashRev)
 		if revHashErr != nil {
 			fmt.Println("Error reversing hash: ", revHashErr)
 		}
@@ -212,17 +179,11 @@ func VerifyBlock(txs []*wire.MsgTx, updatedCoinbaseTx *wire.MsgTx, totalTxSizeWi
 		currNonce = 0
 	}
 	coinbaseTx := block.Transactions[0]
-	// Following section isn't needed because the coinbase transaction is already modified in the [[ParseBlock]] function
-	// commitmentScript := CreateCoinbaseCommittmentScript(txs)
-	// commitmentOutput := wire.NewTxOut(0, commitmentScript)
-	// coinbaseTx.AddTxOut(commitmentOutput)
 	txIdsInBlock := make([]string, 0)
 	txTotalSize := 0
 	for _, tx := range block.Transactions {
 		txIdHash := tx.TxHash()
 		txTotalSize += tx.SerializeSize()
-		// newTxIdStr := hex.EncodeToString(txIdHash.CloneBytes())
-		// newTxId, _ := chainhash.NewHashFromStr(newTxIdStr)
 		txIdsInBlock = append(txIdsInBlock, txIdHash.String())
 	}
 	blockWeightUnits := 320 + (txTotalSize * 3) + totalTxSizeWitWitnesses
@@ -237,14 +198,6 @@ func VerifyBlock(txs []*wire.MsgTx, updatedCoinbaseTx *wire.MsgTx, totalTxSizeWi
 
 		headerHash := block.BlockHash()
 		headerHashBytes, _ := hex.DecodeString(headerHash.String())
-		// for numerical calculations, we gotta convert our little endian hash to big endian, before conerting to big int
-		// headerHashReversed := ReverseBytesFromHexStr(headerHash.String())
-		// headerHashRevBytes, _ := hex.DecodeString(headerHashReversed)
-
-		// blockHeaderSerialized := SerializeWireBlockHeader(blockHeader)
-		// fmt.Println("Block Header: ", hex.EncodeToString(blockHeaderSerialized), "\nBlock Hash: ", headerHash.String())
-		// break
-
 		hashInt := new(big.Int).SetBytes(headerHashBytes)
 
 		// Convert the target to its compact representation
@@ -277,20 +230,14 @@ func Uint32ToBigInt(value uint32) *big.Int {
 }
 
 func GetNonce(value uint32) uint32 {
-	// nonceHex := fmt.Sprintf("%08x", value)
-	// nonceHex = ReverseBytesFromHexStr(nonceHex)
 	nonceBytes := make([]byte, 4)
 	binary.LittleEndian.PutUint32(nonceBytes, value)
-	// returnValue := binary.LittleEndian.Uint32(nonceBytes)
-	// fmt.Printf("Input: %d Nonce: %x, nonce hex: %s\n", value, returnValue, nonceHex)
 	return binary.LittleEndian.Uint32(nonceBytes)
 }
 
 func HexToCompactHex(target *big.Int) uint32 {
 	// Calculate the size of the target in bytes
 	size := (target.BitLen() + 7) / 8
-
-	// Create a big integer to hold the compact representation
 	compact := new(big.Int)
 
 	if size <= 3 {
@@ -308,10 +255,8 @@ func HexToCompactHex(target *big.Int) uint32 {
 		compact.Rsh(compact, 8)
 		size++
 	}
-
 	// Set the size as the exponent in the compact target
 	compact.Or(compact, big.NewInt(int64(size<<24)))
-
 	// Return the compact target as a uint32
 	return uint32(compact.Uint64())
 }

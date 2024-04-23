@@ -15,8 +15,6 @@ import (
 )
 
 func CreateCoinbaseTx() (*wire.MsgTx, types.TransactionData) {
-	// var coinbaseTx types.TransactionData
-	// let's create my public key, private key and address
 	var transaction types.TransactionData
 	tx := wire.NewMsgTx(wire.TxVersion)
 	// create the chain hash which is the hash of the genesis block which is actually just a 32 byte array of 0s
@@ -87,26 +85,17 @@ func ConbaseTxToTxStruct(tx *wire.MsgTx) {
 func PrintCoinbaseTx() ([]byte, string) {
 	tx, _ := CreateCoinbaseTx()
 	hexEncoded := hex.EncodeToString(SerializeWireMsgTx(tx))
-	// fileName := GetFileName(hexEncoded)
-	// parse the transaction struct to a string
-	// fmt.Println("Coinbase transaction: ", transcation)
-	// fmt.Println("Coinbase transaction: ", hexEncoded, "\nFilename: ", hex.EncodeToString(fileName))
 	return SerializeWireMsgTx(tx), hexEncoded
 }
 
 func CreateCoinbaseCommittmentScript(txs []*wire.MsgTx) []byte {
 	witnessRootHash, _ := CreateWitnessMerkleTree(txs)
 	witnessRootHashRev, _ := chainhash.NewHashFromStr(ReverseBytesFromHexStr(witnessRootHash.String()))
-	// witnessReservedValue := "0000000000000000000000000000000000000000000000000000000000000000"
 	witnessReservedValue := make([]byte, 32)
 	witnessRootHashBytes, _ := hex.DecodeString(witnessRootHashRev.String())
-	// witnessReservedValueBytes, _ := hex.DecodeString(witnessReservedValue)
 	wTxIdCommitment := chainhash.DoubleHashH(append(witnessRootHashBytes, witnessReservedValue...))
-	// for this method, call hex.encodetostring(wtxidcommitment2) to get the value in natural byte order. We have a similar behavior below, when we manually reverse byte order
-	// wTxIdCommitment2 := chainhash.DoubleHashB(append(witnessRootHashBytes, witnessReservedValue...))
 	wTxIdCommitmentRev := ReverseBytesFromHexStr(wTxIdCommitment.String())
 	wTxIdCommitmentHash, _ := hex.DecodeString(wTxIdCommitmentRev)
-	// fmt.Println("wit: ", wTxIdCommitment.String(), "\nwit2 : ", hex.EncodeToString(wTxIdCommitment2), "\nwit3: ", hex.EncodeToString(wTxIdCommitmentHash))
 	prefixBytes, _ := hex.DecodeString("aa21a9ed")
 	commitmentScript, err := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).AddData(append(prefixBytes, wTxIdCommitmentHash...)).Script()
 	if err != nil {
@@ -123,8 +112,6 @@ func createCoinbaseScriptSig() []byte {
 	scriptBuilder := txscript.NewScriptBuilder()
 	scriptBuilder.AddOp(txscript.OP_DATA_4).AddData(heightBytes)
 	script, _ := scriptBuilder.Script()
-	// decryp, _ := txscript.DisasmString(script)
-	// fmt.Println("Script: ", hex.EncodeToString(script), "\nDecrypted: ", decryp)
 	return script
 }
 
