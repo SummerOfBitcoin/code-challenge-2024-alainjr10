@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"sort"
 
 	"github.com/SummerOfBitcoin/code-challenge-2024-alainjr10/handlers"
 	"github.com/SummerOfBitcoin/code-challenge-2024-alainjr10/types"
@@ -34,36 +33,7 @@ func main() {
 		}
 		transactions = append(transactions, transaction)
 	}
-	sort.Slice(transactions, func(i, j int) bool {
-		inputAmountI := 0
-		outputAmountI := 0
-		for _, vin := range transactions[i].Vin {
-			inputAmountI += vin.Prevout.Value
-		}
-		for _, vout := range transactions[i].Vout {
-			outputAmountI += vout.Value
-		}
-		inputAmountJ := 0
-		outputAmountJ := 0
-		for _, vin := range transactions[j].Vin {
-			inputAmountJ += vin.Prevout.Value
-		}
-		for _, vout := range transactions[j].Vout {
-			outputAmountJ += vout.Value
-		}
-		_, _, txIWOWit, txIWithWith := handlers.SerializeATx(transactions[i])
-		_, _, txJWOWit, txJWithWith := handlers.SerializeATx(transactions[j])
-		txIBaseSize, txITotSize := len(txIWOWit), len(txIWithWith)
-		txJBaseSize, txJTotSize := len(txJWOWit), len(txJWithWith)
-		txIWeight := txIBaseSize*3 + txITotSize
-		txJWeight := txJBaseSize*3 + txJTotSize
-		feeI := inputAmountI - outputAmountI
-		feeJ := inputAmountJ - outputAmountJ
-		ratioI := float64(feeI) / float64(txIWeight)
-		ratioJ := float64(feeJ) / float64(txJWeight)
-		return ratioI > ratioJ
-	})
-	fmt.Println("first tx: ", transactions[11].TxFilename, "last tx: ", transactions[len(transactions)-1].TxFilename)
+	handlers.SortTxs(transactions)
 	var allTxs []*wire.MsgTx
 	// getValidTxOfCertainTypes(transactions, "p2pkh")
 	// validTxIds := make([]string, 0)
@@ -82,13 +52,18 @@ func main() {
 		// hasSameVins := true
 		// for _, vin := range tx.Vin {
 		// 	firstVin := tx.Vin[0]
+		// 	// if vin.Prevout.ScriptPubKeyType == "p2sh" && len(tx.Vin) == 1 && len(vin.Witness) == 2 {
+		// 	// 	p2msno++
+		// 	// 	hasSameVins = false
+		// 	// 	break
+		// 	// }
 		// 	if vin.Prevout.ScriptPubKeyType != firstVin.Prevout.ScriptPubKeyType {
 		// 		hasSameVins = false
 		// 		break
 		// 	}
 		// }
 		// if !hasSameVins {
-		// 	fmt.Println("tx wit multiple vin: ", tx.TxFilename)
+		// 	fmt.Println("tx wit multiple vin: ", tx.TxFilename, "index: ", i, "p2msno: ", p2msno)
 		// }
 		// handlers.ValidateTxHashes(tx)
 		// 5d8839c29051c0a892730be6c4f6be086904b0a6d537097df1fc92bb8d30a5ad
@@ -109,7 +84,11 @@ func main() {
 			// if tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wsh" {
 			// 	fmt.Println("PSWSH: ", tx.TxFilename)
 			// }
-			if tx.Vin[0].Prevout.ScriptPubKeyType == "p2pkh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wpkh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wsh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v1_p2tr" {
+			// if len(allTxs) >= 10 {
+			// 	break
+			// }
+			// if tx.Vin[0].Prevout.ScriptPubKeyType == "p2sh" {
+			if tx.Vin[0].Prevout.ScriptPubKeyType == "p2pkh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wpkh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wsh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v1_p2tr" || tx.Vin[0].Prevout.ScriptPubKeyType == "p2sh" {
 				res := handlers.FullTxValidation(tx)
 				serializedAllTx, _, _, _ := handlers.SerializeATx(tx)
 				allTxs = append(allTxs, serializedAllTx)
