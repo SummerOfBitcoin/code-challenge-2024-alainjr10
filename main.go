@@ -41,22 +41,22 @@ func main() {
 	txTotalBaseSize := 0
 	totalBlockWeight := 320 + 800*2 // 320 is the size of the block header and 600 is the  approx size of the coinbase tx
 	// with margin of error. we do 800*2 because... coinbase tx weight for nonsegwit and for segwit serialzing the tx with witness
-	for i, tx := range transactions {
-		if len(allTxs) < 200 && len(tx.Vin) > 1 {
-			hasSameVins := true
-			for _, vin := range tx.Vin {
-				firstVin := tx.Vin[0]
-				if vin.Prevout.ScriptPubKeyType != firstVin.Prevout.ScriptPubKeyType {
-					hasSameVins = false
-					break
-				}
-			}
-			if !hasSameVins {
-				fmt.Println("tx wit multiple vin: ", tx.TxFilename, "index: ", i)
-			}
-		}
+	for _, tx := range transactions {
+		// if len(allTxs) < 200 && len(tx.Vin) > 1 {
+		// 	hasSameVins := true
+		// 	for _, vin := range tx.Vin {
+		// 		firstVin := tx.Vin[0]
+		// 		if vin.Prevout.ScriptPubKeyType != firstVin.Prevout.ScriptPubKeyType {
+		// 			hasSameVins = false
+		// 			break
+		// 		}
+		// 	}
+		// 	if !hasSameVins {
+		// 		fmt.Println("tx wit multiple vin: ", tx.TxFilename, "index: ", i)
+		// 	}
+		// }
 
-		if len(tx.Vin) == 1 {
+		if len(tx.Vin) >= 1 {
 			// if len(allTxs) >= 10 {
 			// 	break
 			// }
