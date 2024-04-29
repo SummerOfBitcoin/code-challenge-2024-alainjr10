@@ -88,6 +88,7 @@ func PrintCoinbaseTx() ([]byte, string) {
 	return SerializeWireMsgTx(tx), hexEncoded
 }
 
+// create the coinbase commitment script
 func CreateCoinbaseCommittmentScript(txs []*wire.MsgTx) []byte {
 	witnessRootHash, _ := CreateWitnessMerkleTree(txs)
 	witnessRootHashRev, _ := chainhash.NewHashFromStr(ReverseBytesFromHexStr(witnessRootHash.String()))
@@ -104,6 +105,7 @@ func CreateCoinbaseCommittmentScript(txs []*wire.MsgTx) []byte {
 	return commitmentScript
 }
 
+// create the coinbase transaction signature script
 func createCoinbaseScriptSig() []byte {
 	// Convert block height to a byte slice
 	height := fmt.Sprintf("%06x", 838770)
@@ -115,6 +117,7 @@ func createCoinbaseScriptSig() []byte {
 	return script
 }
 
+// This function is used just once to create my bitcoin address which i will use to pay myself as coinbase reward
 func CreateBtcAddress() string {
 	privKey, _ := btcec.NewPrivateKey()
 	pubKey := privKey.PubKey()

@@ -33,6 +33,7 @@ func main() {
 		}
 		transactions = append(transactions, transaction)
 	}
+	// Sort transactions based on fee/weight ratio
 	handlers.SortTxs(transactions)
 	var allTxs []*wire.MsgTx
 	var validTxs []*wire.MsgTx
@@ -42,35 +43,26 @@ func main() {
 	totalBlockWeight := 320 + 800*2 // 320 is the size of the block header and 600 is the  approx size of the coinbase tx
 	// with margin of error. we do 800*2 because... coinbase tx weight for nonsegwit and for segwit serialzing the tx with witness
 	for _, tx := range transactions {
-		// if len(allTxs) < 200 && len(tx.Vin) > 1 {
-		// 	hasSameVins := true
-		// 	for _, vin := range tx.Vin {
-		// 		firstVin := tx.Vin[0]
-		// 		if vin.Prevout.ScriptPubKeyType != firstVin.Prevout.ScriptPubKeyType {
-		// 			hasSameVins = false
-		// 			break
-		// 		}
-		// 	}
-		// 	if !hasSameVins {
-		// 		fmt.Println("tx wit multiple vin: ", tx.TxFilename, "index: ", i)
-		// 	}
-		// }
-
 		if len(tx.Vin) >= 1 {
-			// if len(allTxs) >= 10 {
-			// 	break
-			// }
-			// if tx.Vin[0].Prevout.ScriptPubKeyType == "p2sh" {
+			// we have several if's here because we initially picked a few types of transactions to verify. ideally, this code should
+			// work on any of the given input types of transactions in the mempool currently
 			if tx.Vin[0].Prevout.ScriptPubKeyType == "p2pkh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wpkh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v0_p2wsh" || tx.Vin[0].Prevout.ScriptPubKeyType == "v1_p2tr" || tx.Vin[0].Prevout.ScriptPubKeyType == "p2sh" {
+				// the FullTxValidation function performs several checks to see if the transaction is valid and if it is, it returns true
 				res := handlers.FullTxValidation(tx)
 				serializedAllTx, _, _, _ := handlers.SerializeATx(tx)
 				allTxs = append(allTxs, serializedAllTx)
+				// if the transaction is valid, we serialize it and add it to the validTxs slice
 				if res {
+					// our [SeruakuzeATx] function returns 4 outputs, a normal serialized transaction without any witnesses, a sealialized
+					// transaction with witnesses, the bytes of the serialized transaction and the bytes of the serialized transaction with witnesses
 					serializedTx, serializedTxWithWitness, serializedTxBytes, serializedWitnessTxBytes := handlers.SerializeATx(tx)
 					txBaseSize := len(serializedTxBytes)
 					txSizeWWit := len(serializedWitnessTxBytes)
 					txTotalBaseSize += txBaseSize
 					txTotalSize += txSizeWWit
+					// we calculate the weight units of the transaction and add it to the total block weight, this block weight unit is calculated
+					// by adding the base size of the transaction multiplied by 3 and the size of the transaction with witness
+					// we stop adding transactions to the block if the total block weight is greater than 3999999 as max block weight is 4,000,000
 					totalBlockWeight += txBaseSize*3 + txSizeWWit
 					if totalBlockWeight > 3999999 {
 						break
@@ -86,6 +78,7 @@ func main() {
 		}
 	}
 	coinbaseComScript := handlers.CreateCoinbaseCommittmentScript(validTxsWithWitness)
+	// after creating the commitment script, we then update our already created coinbase transaction with this witness script
 	modCoinbaseTx := handlers.CreateAndModCoinbaseTxWithSecondOutput(coinbaseComScript)
 	var coinbaseTxBytesBuf bytes.Buffer
 	modCoinbaseTx.Serialize(&coinbaseTxBytesBuf)
