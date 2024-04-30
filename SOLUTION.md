@@ -1,7 +1,7 @@
 # Summer of Bitcoin 2024: Mine your first block - Assignment Solution Documentation
 
 ## Design approach
-**the main.go file**
+### the main.go file 
 So I started this project by going through a lot of document, including the Grokking Bitcoin document, and the Bitcoin improvement proposals, after which, i started the pseudocode and coding phase thereafter using the following high level phases.
 - I first started by trying to validate transactions of just one input, and one transaction type (more on this later), since i was still trying to figure a way of working.
 - I created a `TransationData` struct, and a `Block` struct. these structs contain several sub structs, such as structs for `TransactionVin` and `TransactionVout` etc
@@ -15,10 +15,33 @@ So I started this project by going through a lot of document, including the Grok
 - The result of the above method is then fed to the `CreateAndModCoinbaseTxWithSecondOutput` function which calls the `CreateCoinbaseTx` method (Which we will get to shortly) and then updates the coinbase modified coinbase transaction which contains the witness script.
 - Finally, this file calls the `VerifyBlock` function, which accepts the modified coinbase transaction, the slice of valid transactions without witness data and the total block weight.
 
-***The create_coinbase_tx.go file***
+### The create_coinbase_tx.go file
 This file mostly contains functions related to creating the coinbase transaction which we will summarize as follows
 - The `CreateCoinbaseTx` function has two return types `*wire.MsgTx` and `types.TransactionData`
 - This function basically creates a wire.MsgTx transaction with one input and a single output. The input contains a previous outpoint which contains the script sig created with the `createCoinbaseScriptSig` function, and an index, which is just 32 bytes of zeros. The input also has a sequence *0xffffffff* which indicates no locking. 
 The output contains the reward i pay myself as a reward for mining the block as well as any transaction fees accrued, along with a script pub key, which was generated from my pubkeyhash
 - This transaction is then parsed to a `TransactionData` struct and returned along with the wire.msgtx transaction
 - `createCoinbaseScriptSig` just creates the script sig for the coinbase transaction by appending the length of the block  height to the block height bytes itself.
+
+### validate_tx.go file
+This function contains the core part of the verification process. some functions here are fairly straight forward and they explain for themselves what they do, I'll pick a few functions here to brief about
+- The very first function in ths file, `FullTxValidation` just basically calls three functions, the `ValidateTxTimeLock`, the `ValidateTxHashes` and the `VerifyFullTxSig`. If all these functions return true, then the transaction is valid.
+
+    - `ValidateTxTimeLock`This function just checks the lock time. First it checks if current time is greater than the lock time, if so, the transaction is invalid, because it wouldn't have been published even, so no need for verification. It then checks if the locktime is less than 500000000, then it's a block height locktime and should be considered valid. Finally we check if the sequence is the max sequence (0xffffffff) or if the sequence is less than or equal to the relative locktime max sequence `0xefffffff` then the transaction is valid, else, it is invalid.
+    - `ValidateTxHashes` function takes in a transaction and loops through all of it's inputs. It first of all keeps track of an `overallStack` stack instance. Then at each iteration over the input, it creates a new instance of a stack and goes through the opcodes and operands responsible for comparing hashes and performs operations such as hashing the script pubkey and pushing the hash to the stack and then popping top 2 items, which include this hash  and the hash provided in the scriptpubkey and comparing them. In the end, if the particular input is valid, we push `0x01` to the overall stack. else, we push `0x00` to the stack and break out of the loop. In the end, if our overall stack contains `0x01` after going through all the inputs, then the transaction passed this test.
+    - `VerifyFullTxSig` takes a transaction, loops through all the inputs sequentially, and then calls the `VerifyTxSig` function on the said input. This function carries out the process of verifying transaction signatures. If the signature is valid here, we return true and continue with the next input, until we've looped through all the inputs, if the input is still true, then the signatures for the transaction is valid. If however at any input, the signature verification fails, we break out of the loop and return false. The transaction is invalid.
+This file contains some other important functions such as `SerializeATxWOSigScript` and `SerializeATx` which does what the name suggests, serializes a transaction with the signature script and witness,  and serializes a transaction without witness and script data respectively. These 2 functions could be augmented into one single function, but for simplicity, i decided to split the functions. Ideally, we would rename the `SerializeATxWOSigScript` function to something like `CalculateHashMessage` or similar, because this function essentially calculates the hash pre image message which is used to verify signatures in `VerifyTxSig` function we just saw above. 
+Notice how these functions `VerifyTxSig` and `SerializeATxWOSigScript` take in as input a transaction and in index value. This index is the index of the currently verifying input in the Transaction inputs array.
+
+### create_block.go
+Finally, we get to the create block file which it contains the functions responsible for helping in the mining process.
+- `CreateBlockHeader` creates the block header and returns the result as a `*wire.BlockHeader`. Block header creation involves adding parameters such as the target, previous block header, merkle root, version number
+- Remember our coinbase having just one transaction output as mentioned above? well we actually do have two outputs in the coinbase transaction. The second output just pays 0 zero as the amount and has as pubkey script, the commitment script, as designed in the `CreateAndModCoinbaseTxWithSecondOutput` method. We add the second output to the coinbase transaction and return the updated coinbase tx
+- `ParseBlock` function takes in all the valid transaction, and coinbase transaction, calculates the merkle root using `CreateMerkleTree` function and then adds this merkel root to the block header. It then adds the coinbase transaction to a slice of transactions, and then loops through all the other transactions and adds to this slice. finally, we serialize this block and return the result as a `*wire.MsgBlock` object
+- Next we create the merkle roots. I say root(s) because we need to create two merkle roots, if  our block contains segwit transactions, which it does. I have two functions for this which again, could be combined into a single function, but for simplicity sake, we keep them in separate functions, `CreateMerkleTree` and `CreateWitnessMerkleTree`. Witness merkletree is created with witness transaction ids and not the "normal transaction id"
+- Finally, we have the `VerifyBlock` which first of all calls the `ParseBlock` function and stores the result in a block variable  We then increment the nonce if the value is less than max sequence number (0xffffffff)
+Now if the block has not been mined yet, we update our block header by incrementing the nonce and replacing the previous nonce. We then hash this header and compare to the compact version of the target. if it isn't less than the target, we increment the nonce and go again. We continue doing this (incrementing nonce, updating block header, hashing and comparing), until we find the appropriate target. Then we stop trying, write our ouput to a file, and then close the mining process, and just like that, our block has been mined.
+
+
+This is like a high level overview of what has been done in the code. while this doesn't cover all the functions used, and the ordering isn't very appropriate, it does give the overall picture of what was implemented during the mining process.
+

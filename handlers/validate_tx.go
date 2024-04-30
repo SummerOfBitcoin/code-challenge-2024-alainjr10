@@ -47,12 +47,15 @@ func SortTxs(transactions []types.TransactionData) {
 		for _, vout := range transactions[j].Vout {
 			outputAmountJ += vout.Value
 		}
+		// serialize transactions i and j and return the serialized transactions wi and without witness fields
 		_, _, txIWOWit, txIWithWith := SerializeATx(transactions[i])
 		_, _, txJWOWit, txJWithWith := SerializeATx(transactions[j])
 		txIBaseSize, txITotSize := len(txIWOWit), len(txIWithWith)
 		txJBaseSize, txJTotSize := len(txJWOWit), len(txJWithWith)
+		// calculate total weight for both transcation
 		txIWeight := txIBaseSize*3 + txITotSize
 		txJWeight := txJBaseSize*3 + txJTotSize
+		//calculate fee for both transactions
 		feeI := inputAmountI - outputAmountI
 		feeJ := inputAmountJ - outputAmountJ
 		ratioI := float64(feeI) / float64(txIWeight)
@@ -564,9 +567,11 @@ func VerifyTxSig(transaction types.TransactionData, inputIndex int) bool {
 	return verified
 }
 
+// This function goes through each transaction input, tries to verify the signature and then proceeds to the next input
 func VerifyFullTxSig(transaction types.TransactionData) bool {
 	var verified bool
 	for i := 0; i < len(transaction.Vin); i++ {
+		// verify signature for this input, if it fails, then whole transaction is invalid. break out and return false
 		verifyTxInputSig := VerifyTxSig(transaction, i)
 		if !verifyTxInputSig {
 			verified = false
